@@ -1,0 +1,24 @@
+{
+  "name": "sample/zeroad-consumer",
+  "description": "Sample project using ZeroAd PHP token library",
+  "type": "project",
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../",
+      "options": {
+        "symlink": true
+      }
+    }
+  ],
+  "require": {
+    "php": ">=7.2",
+    "ext-sodium": "*",
+    "zeroad.network/token": "0.10.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Sample\\Consumer\\": "src/"
+    }
+  }
+}

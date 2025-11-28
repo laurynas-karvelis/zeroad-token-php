@@ -1,0 +1,31 @@
+{
+  "name": "zeroad.network/token",
+  "version": "0.10.0",
+  "description": "Client token parsing helper library",
+  "type": "library",
+  "license": "SEE LICENSE IN LICENSE",
+  "keywords": [
+    "better web",
+    "zero ad network",
+    "zero ad",
+    "zeroad"
+  ],
+  "homepage": "https://github.com/Seldaek/monolog",
+  "authors": [
+    {
+      "name": "Laurynas Karvelis <Explosive Brains Ltd>",
+      "email": "hello@zeroad.network",
+      "homepage": "http://zeroad.network",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=7.2.0",
+    "ext-sodium": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "ZeroAd\\Token\\": "src/"
+    }
+  }
+}
