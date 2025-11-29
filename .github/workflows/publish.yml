@@ -2,6 +2,10 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.2.3)"
+        required: true
   push:
     tags:
       - "v*"
@@ -22,5 +26,9 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      - name: Run tests
-        run: vendor/bin/phpunit --testdox
+      - name: Notify Packagist
+        run: |
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"username\": \"${{ secrets.PACKAGIST_USERNAME }}\", \"apiToken\": \"${{ secrets.PACKAGIST_TOKEN }}\"}" \
+            https://packagist.org/api/update-package?package=vendor/package

@@ -1,6 +1,5 @@
 {
   "name": "zeroad.network/token",
-  "version": "0.10.0",
   "description": "Client token parsing helper library",
   "type": "library",
   "license": "SEE LICENSE IN LICENSE",
