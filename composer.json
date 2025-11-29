@@ -2,7 +2,7 @@
   "name": "zeroad.network/token",
   "description": "Client token parsing helper library",
   "type": "library",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "",
   "keywords": [
     "better web",
     "zero ad network",
