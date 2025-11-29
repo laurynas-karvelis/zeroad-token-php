@@ -1,26 +1,16 @@
 name: Publish
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (e.g. v1.2.3)"
-        required: true
   push:
     tags:
-      - "v*"
+      - "*"
 
 jobs:
-  build-test:
+  build-publish:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Create tag
-        run: |
-          git tag ${{ github.event.inputs.tag }}
-          git push origin ${{ github.event.inputs.tag }}
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
