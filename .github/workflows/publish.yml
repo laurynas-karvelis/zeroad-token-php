@@ -18,12 +18,13 @@ jobs:
           php-version: "8.5"
           coverage: none
 
+      - name: Authenticate Composer to GitHub Packages
+        run: |
+          composer config --global github-oauth.github.com "${{ secrets.GITHUB_TOKEN }}"
+          composer config repositories.github '{"type": "composer", "url": "https://repo.packagist.org"}'
+
       - name: Install dependencies
         run: composer install --no-interaction --no-progress
 
-      - name: Notify Packagist
-        run: |
-          curl -X POST \
-            -H "Content-Type: application/json" \
-            -d "{\"username\": \"${{ secrets.PACKAGIST_USERNAME }}\", \"apiToken\": \"${{ secrets.PACKAGIST_TOKEN }}\"}" \
-            https://packagist.org/api/update-package?package=vendor/package
+      - name: Publish package
+        run: composer publish --no-interaction
