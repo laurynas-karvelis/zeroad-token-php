@@ -16,6 +16,7 @@ final class SiteTest extends TestCase
     {
         $site = new Site(['siteId' => $this->siteId, 'features' => [Constants::FEATURES['ADS_OFF'], Constants::FEATURES['COOKIE_CONSENT_OFF']]]);
         $this->assertEquals(Constants::SERVER_HEADERS['WELCOME'], $site->SERVER_HEADER_NAME);
+        // cspell:disable-next-line
         $this->assertEquals("Bzw9eblgQzW5SEFqwePb1A^1^3", $site->SERVER_HEADER_VALUE);
     }
 

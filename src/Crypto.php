@@ -11,6 +11,7 @@ class Crypto
     public static function generateKeys(): array
     {
         $keypair = sodium_crypto_sign_keypair();
+        // cspell:words secretkey
         $privateKey = sodium_crypto_sign_secretkey($keypair);
         $publicKey = sodium_crypto_sign_publickey($keypair);
 
@@ -26,6 +27,7 @@ class Crypto
     public static function importPrivateKey(string $privateKeyBase64): string
     {
         $key = base64_decode($privateKeyBase64, true);
+        // cspell:words SECRETKEYBYTES
         if ($key === false || strlen($key) !== SODIUM_CRYPTO_SIGN_SECRETKEYBYTES) {
             throw new \InvalidArgumentException("Invalid private key");
         }
