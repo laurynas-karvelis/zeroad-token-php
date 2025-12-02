@@ -26,19 +26,9 @@ Install it with `composer`:
 composer require zeroad.network/token
 ```
 
-Include in your PHP entry file:
-
-```php
-<?php
-
-require __DIR__ . '/vendor/autoload.php';
-
-use ZeroAd\Token\Site;
-```
-
 # Examples
 
-Take the example as a reference only. The most basic example could look similar to this:
+Take the example as a reference only. The most basic example could look like this:
 
 ```php
 <?php
@@ -46,35 +36,28 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use ZeroAd\Token\Site;
-
 // -----------------------------------------------------------------------------
 // Module initialization (once on startup)
 // -----------------------------------------------------------------------------
-Site::init([
-    'value' => getenv('ZERO_AD_NETWORK_WELCOME_HEADER_VALUE') ?: ''
-]);
-
-$SERVER_HEADER_NAME  = Site::getServerHeaderName();
-$SERVER_HEADER_VALUE = Site::getServerHeaderValue();
-$CLIENT_HEADER_NAME  = Site::getClientHeaderName();
+// You can pass in server "Welcome Header" value that was generated once site Registration was complete on our platform, like this:
+//   $site = new Site(getenv('ZERO_AD_NETWORK_WELCOME_HEADER_VALUE'));
+//
+// Or pass in siteId and define site features you support at the time to construct "Welcome Header" dynamically, like this:
+$site = new ZeroAd\Token\Site(['siteId' => "073C3D79-B960-4335-B948-416AC1E3DBD4", 'features' => [ZeroAd\Token\Constants::FEATURES['ADS_OFF']]]);
 
 // -----------------------------------------------------------------------------
 // Middleware simulation function
 // -----------------------------------------------------------------------------
 function tokenMiddleware(callable $handler)
 {
-    global $SERVER_HEADER_NAME, $SERVER_HEADER_VALUE, $CLIENT_HEADER_NAME;
+    global $site;
 
     // Inject server header
-    header("{$SERVER_HEADER_NAME}: {$SERVER_HEADER_VALUE}");
+    header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
 
-    // Read client token header
-    $httpHeaderName = 'HTTP_' . strtoupper(str_replace('-', '_', $CLIENT_HEADER_NAME));
-    $clientHeaderValue = $_SERVER[$httpHeaderName] ?? null;
-
-    // Process token
-    $tokenContext = Site::processRequest($clientHeaderValue);
+    // Read client token header. Client Header Name is already prepared to used in $_SERVER lookup table
+    // And Parse the token
+    $tokenContext = $site->parseToken($$_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
 
     // Pass token context to handler
     $handler($tokenContext);
@@ -87,25 +70,23 @@ $uri = $_SERVER['REQUEST_URI'];
 
 if ($uri === '/') {
     tokenMiddleware(function ($tokenContext) {
-        header('Content-Type: application/json');
-        echo json_encode([
-            'message' => 'OK',
-            'tokenContext' => $tokenContext
-        ]);
-    });
-} elseif ($uri === '/template') {
-    tokenMiddleware(function ($tokenContext) use ($CLIENT_HEADER_NAME) {
-        $shouldRemoveAds = $tokenContext['shouldRemoveAds'] ?? false;
         $template = '
         <html>
             <body>
                 <h1>Hello</h1>
                 <pre>tokenContext = ' . htmlspecialchars(json_encode($tokenContext, JSON_PRETTY_PRINT)) . '</pre>
-                ' . ($shouldRemoveAds ? '<p>Will not show ads</p>' : '<p>Will show ads</p>') . '
             </body>
         </html>
         ';
         echo $template;
+    });
+} elseif ($uri === '/json') {
+    tokenMiddleware(function ($tokenContext) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'message' => 'OK',
+            'tokenContext' => $tokenContext
+        ]);
     });
 } else {
     http_response_code(404);

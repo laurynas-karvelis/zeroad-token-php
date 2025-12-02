@@ -2,6 +2,10 @@
   "name": "sample/zeroad-consumer",
   "description": "Sample project using zeroad.network/token PHP library",
   "type": "project",
+  "minimum-stability": "dev",
+  "scripts": {
+    "serve": "php -S localhost:8080 -t public/"
+  },
   "repositories": [
     {
       "type": "path",
@@ -12,7 +16,7 @@
     }
   ],
   "require": {
-    "php": ">=7.2",
+    "php": ">=7.2.0",
     "ext-sodium": "*",
     "zeroad.network/token": "*"
   },

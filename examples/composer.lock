@@ -1,0 +1,72 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "841a34eed2a90e801cbad66824d16a03",
+    "packages": [
+        {
+            "name": "zeroad.network/token",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "..",
+                "reference": "df18eda4b371cb22e973a7260eec03eca537717e"
+            },
+            "require": {
+                "ext-sodium": "*",
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^12.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "ZeroAd\\Token\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "ZeroAd\\Token\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Laurynas Karvelis <Explosive Brains Ltd>",
+                    "email": "hello@zeroad.network",
+                    "homepage": "http://zeroad.network",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Client token parsing helper library",
+            "homepage": "http://zeroad.network",
+            "keywords": [
+                "better web",
+                "zero ad",
+                "zero ad network",
+                "zeroad"
+            ],
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "dev",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {
+        "php": ">=7.2.0",
+        "ext-sodium": "*"
+    },
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}
