@@ -1,6 +1,6 @@
 {
   "name": "zeroad.network/token",
-  "description": "Client token parsing helper library",
+  "description": "An HTTP-header-based \"access / entitlement token\" library for Zero Ad Network partnering sites using PHP",
   "type": "library",
   "license": "Apache-2.0",
   "keywords": [
