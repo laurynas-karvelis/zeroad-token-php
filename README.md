@@ -1,26 +1,76 @@
-## Introduction
+# Introduction
 
-**zeroad.network/token** is a module meant to be used by partnering sites of [Zero Ad Network](https://zeroad.network) platform. It's a lightweight module that works on PHP 7.2 (with `ext-sodium` pre-installed) and later versions.
+This PHP Composer module is meant to be used by sites participating in [Zero Ad Network](https://zeroad.network) program, that are running in PHP runtime.
 
-This node module allows a Zero Ad Network program partnering sites and Web APIs to verify determine if incoming web requests are coming from our browser extension users with active subscription.
+The `zeroad.network/token` module acts as an HTTP‑header‑based "access / entitlement token" library. It is a lightweight, fully open source, well tested and has no external production dependencies.
 
-Their browser extension will send the `X-Better-Web-Hello` Request Header which will let our module to verify it's our actively subscribed user and will allow your site to make a decision whether to disable ads, paywalls or enable access to otherwise paid content of yours.
+Up-to-date and in depth guides, how-to's and platform implementation details can be found at [the official Zero Ad Network documentation portal](https://docs.zeroad.network).
 
-ZeroAd user browser extension will measure how many times and how long they spent on each resource of your website that sends the `X-Better-Web-Welcome` token. This information will go back to us and at the end of each month based on how large the active user base is and how much competition you got, you'll get awarded from each user's monthly subscription paid amount based on their usage patterns interacting with your site.
+## Runtime compatibility
 
-## Setup
+| Runtime | Compatibility | Ready |
+| :------ | :------------ | :---: |
+| PHP 7   | 7.2+          |  ✅   |
+| PHP 8   | 8.0+          |  ✅   |
 
-If you already have your site registered with us, you can skip the section below.
+NOTE: Your PHP runtime must come with `ext-sodium` pre-installed.
 
-### Register your website or web API
+## Purpose
 
-Sign up with us by navigating in your browser to [sign up](https://zeroad.network/login), once you've logged in successfully, go to and [add a project](https://zeroad.network/publisher/sites/add) page and register your site.
+It helps partnered site developer to:
 
-In the second step of the Site registration process you'll be presented with your unique `X-Better-Web-Welcome` header value for that site. Your website must respond with this header in all publicly accessible endpoints that contain HTML or RESTful response types. This will let ZeroAd Network users know that you are participating in the program.
+- Inject a valid site's HTTP Response Header known as "Welcome Header" to every endpoint. An example:
+  ```http
+  X-Better-Web-Welcome: "AZqnKU56eIC7vCD1PPlwHg^1^3"
+  ```
+- Check for Zero Ad Network user's token presence that gets injected as a HTTP Request Header by their browser extension. An example of such Request Header:
+  ```http
+  X-Better-Web-Hello: "Aav2IXRoh0oKBw==.2yZfC2/pM9DWfgX+von4IgWLmN9t67HJHLiee/gx4+pFIHHurwkC3PCHT1Kaz0yUhx3crUaxST+XLlRtJYacAQ=="
+  ```
+- If found, parse the token from the HTTP Request Header value and verify its integrity.
+- (Optionally) Generate a valid "Welcome Header" value when `siteId` UUID and site `features` array are provided.
 
-## Module Installation
+## Implementation details
 
-Install it with `composer`:
+The module uses the `ext-sodium` runtime module to ensure the user's Request Header payload is valid by verifying its signature for the payload using Zero Ad Network's public ED25519 cryptographic key which is supplied within the module. Then:
+
+- User's token payload is decoded and token's protocol version, expiration timestamp and site's feature list are extracted.
+- A map of the site's features and their toggle states is generated.
+- An expired token will produce a feature list with all flags being set to `false`.
+
+Parsed token result example:
+
+```php
+{
+  ADS_OFF: boolean,
+  COOKIE_CONSENT_OFF: boolean,
+  MARKETING_DIALOG_OFF: boolean,
+  CONTENT_PAYWALL_OFF: boolean,
+  SUBSCRIPTION_ACCESS_ON: boolean,
+};
+```
+
+User's token payload verification is done locally within your app and no data leaves your server.
+
+When a token is present, parsing and token integrity verification will roughly add between `0.06ms` to `0.6ms` to the total endpoint execution time (as per testing done on a M1 MacBook Pro). Your mileage will vary depending on your hardware, but the impact should stay minimal.
+
+As per our exploratory test results in attempts to cache the token and its parsed results in Redis - it takes longer to retrieve the cached result than to verify token payload integrity.
+
+## Why to join
+
+By partnering with Zero Ad Network your site establishes a new stream of revenue enabling you to provide a tangible and meaningful value while simultaneously providing a pure, clean and unobstructed site UI that everyone loves.
+
+With every new site joining us, it becomes easier to reshape the internet closer to its original intention - a joyful and wonderful experience for everyone.
+
+## Onboard your site
+
+To register your site, [sign up](https://zeroad.network/login) with Zero Ad Network and [register your site](https://zeroad.network/publisher/sites/add). On the second step of the Site registration process you'll be provided with your unique `X-Better-Web-Welcome` header value.
+
+If you decide for your site to participate in the Zero Ad Network program, then it must respond with this header at all times on every publicly accessible endpoint containing HTML or RESTful response. When Zero Ad Network users visit your site, this allows their browser extension to know your site is participating in the program.
+
+## Module installation
+
+To install the module use PHP Composer:
 
 ```shell
 composer require zeroad.network/token
@@ -28,7 +78,13 @@ composer require zeroad.network/token
 
 # Examples
 
-Take the example as a reference only. The most basic example could look like this:
+Take this PHP example as a quick reference. The example will show how to:
+
+- Inject the "Welcome Header" into each response;
+- Parse user's token from their request header;
+- Use the `$tokenContext` value later in your controllers and templates.
+
+The most basic example looks like this:
 
 ```php
 <?php
@@ -93,19 +149,3 @@ if ($uri === '/') {
     echo 'Not Found';
 }
 ```
-
-For more example implementations please go to [see more examples](https://github.com/laurynas-karvelis/zeroad-token-php/tree/main/examples/).
-
-P.S.: Each web request coming from active subscriber using their Zero Ad Network browser extension will incur a tiny fraction of CPU computation cost to verify the token data matches its encrypted signature. On modern web infrastructure a request execution time will increase roughly by ~0.6ms to 0.2ms or so. Mileage might vary, but the impact is minimal.
-
-# Final thoughts
-
-If no user of ours interacts with your website or web app, you lose nothing. You can keep showing ads to normal users, keep your paywalls etc.
-
-We hope the opposite will happen and you'll realize how many people value pure, clean content created that is meant for them, actual people, that brings tangible and meaningful value for everyone.
-
-Each website that joins us, becomes a part of re-making the web as it originally was intended to be - a joyful and wonderful experience once again.
-
-**Thank you!**
-
-> The "Zero Ad Network" team.
