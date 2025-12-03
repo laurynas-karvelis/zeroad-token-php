@@ -23,7 +23,7 @@ function tokenMiddleware(callable $handler)
     // Inject server header
     header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
 
-    // Read client token header. Client Header Name is already prepared to used in $_SERVER lookup table 
+    // Read client token header. Client Header Name is already prepared to used in $_SERVER lookup table
     // And Parse the token
     $tokenContext = $site->parseToken($_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
 
