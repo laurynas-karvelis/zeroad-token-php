@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -18,7 +19,7 @@ $site = new ZeroAd\Token\Site(['siteId' => "073C3D79-B960-4335-B948-416AC1E3DBD4
 function tokenMiddleware(callable $handler)
 {
     global $site;
-    
+
     // Inject server header
     header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace ZeroAd\Token;
@@ -28,7 +29,7 @@ class ClientHeader
         $data = $this->decode($headerValue);
         $result = [];
 
-        if(empty($data) || $data['expiresAt']->getTimestamp() < (new \DateTime())->getTimestamp()) {
+        if (empty($data) || $data['expiresAt']->getTimestamp() < (new \DateTime())->getTimestamp()) {
             foreach (Constants::FEATURES as $key => $bit) {
                 $result[$key] = false;
             }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace ZeroAd\Token;
@@ -60,15 +61,15 @@ class Crypto
             }
 
             return self::pemToRawEd25519Public($details['key']);
-            
-        } catch(\Exception $e) {
+
+        } catch (\Exception $e) {
             $key = base64_decode($publicKeyBase64, true);
             if ($key === false || strlen($key) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
                 throw new \InvalidArgumentException("Invalid public key");
             }
             return $key;
         }
-        
+
     }
 
     /**

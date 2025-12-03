@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace ZeroAd\Token;
@@ -34,13 +35,19 @@ class ServerHeader
 
     public static function decode(?string $headerValue): ?array
     {
-        if (!$headerValue) return null;
+        if (!$headerValue) {
+            return null;
+        }
         try {
             $parts = explode(self::SEPARATOR, $headerValue);
-            if (count($parts) !== 3) return null;
+            if (count($parts) !== 3) {
+                return null;
+            }
 
             [$encodedSiteId, $protocolVersion, $flags] = $parts;
-            if (!in_array((int)$protocolVersion, Constants::PROTOCOL_VERSION)) return null;
+            if (!in_array((int)$protocolVersion, Constants::PROTOCOL_VERSION)) {
+                return null;
+            }
 
             $siteId = Helpers::base64ToUuid($encodedSiteId);
             $flags = (int)$flags;
