@@ -1,11 +1,11 @@
-name: Publish
+name: Run unit tests
 
 on:
   push:
   pull_request:
 
 jobs:
-  build-publish:
+  run-unit-tests:
     runs-on: ubuntu-latest
 
     steps:
