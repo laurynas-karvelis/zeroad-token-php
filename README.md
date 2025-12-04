@@ -94,7 +94,7 @@ The most basic example looks like this:
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . "/../vendor/autoload.php";
 
 // -----------------------------------------------------------------------------
 // Module initialization (once at startup)
@@ -104,10 +104,8 @@ require_once __DIR__ . '/../vendor/autoload.php';
 //   $site = new Site(getenv('ZERO_AD_NETWORK_WELCOME_HEADER_VALUE'));
 // Option 2: Dynamically construct "Welcome Header" using siteId and features:
 $site = new ZeroAd\Token\Site([
-    'siteId' => "073C3D79-B960-4335-B948-416AC1E3DBD4",
-    'features' => [
-        ZeroAd\Token\Constants::FEATURES['ADS_OFF']
-    ]
+  "siteId" => "073C3D79-B960-4335-B948-416AC1E3DBD4",
+  "features" => [ZeroAd\Token\Constants::FEATURES["ADS_OFF"]],
 ]);
 
 // -----------------------------------------------------------------------------
@@ -115,46 +113,51 @@ $site = new ZeroAd\Token\Site([
 // -----------------------------------------------------------------------------
 function tokenMiddleware(callable $handler)
 {
-    global $site;
+  global $site;
 
-    // Inject the server "X-Better-Web-Welcome" header
-    header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
+  // Inject the server "X-Better-Web-Welcome" header
+  header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
 
-    // Read and parse the client's token header if present
-    $tokenContext = $site->parseToken($_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
+  // Read and parse the client's token header if present
+  $tokenContext = $site->parseToken($_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
 
-    // Pass the parsed token context to the handler
-    $handler($tokenContext);
+  // Pass the parsed token context to the handler
+  $handler($tokenContext);
 }
 
 // -----------------------------------------------------------------------------
 // Routing example (basic PHP routing)
 // -----------------------------------------------------------------------------
-$uri = $_SERVER['REQUEST_URI'];
+$uri = $_SERVER["REQUEST_URI"];
 
-if ($uri === '/') {
-    tokenMiddleware(function ($tokenContext) {
-        // Render HTML page with token context for demonstration
-        $template = '<html>
+if ($uri === "/") {
+  tokenMiddleware(function ($tokenContext) {
+    // Render HTML page with token context for demonstration
+    $template =
+      '
+        <html>
             <body>
                 <h1>Hello</h1>
-                <pre>tokenContext = ' . htmlspecialchars(json_encode($tokenContext, JSON_PRETTY_PRINT)) . '</pre>
+                <pre>tokenContext = ' .
+      htmlspecialchars(json_encode($tokenContext, JSON_PRETTY_PRINT)) .
+      '</pre>
             </body>
-        </html>';
-        echo $template;
-    });
-} elseif ($uri === '/json') {
-    tokenMiddleware(function ($tokenContext) {
-        // Return JSON response with token context
-        header('Content-Type: application/json');
-        echo json_encode([
-            'message' => 'OK',
-            'tokenContext' => $tokenContext
-        ]);
-    });
+        </html>
+        ';
+    echo $template;
+  });
+} elseif ($uri === "/json") {
+  // Return JSON response with token context
+  tokenMiddleware(function ($tokenContext) {
+    header("Content-Type: application/json");
+    echo json_encode([
+      "message" => "OK",
+      "tokenContext" => $tokenContext,
+    ]);
+  });
 } else {
-    // Handle 404 Not Found
-    http_response_code(404);
-    echo 'Not Found';
+  // Handle 404 Not Found
+  http_response_code(404);
+  echo "Not Found";
 }
 ```

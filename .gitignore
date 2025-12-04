@@ -2,4 +2,3 @@
 /.idea/
 .DS_Store
 vendor
-.php-cs-fixer.dist.php
