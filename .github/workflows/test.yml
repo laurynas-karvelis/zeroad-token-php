@@ -23,7 +23,6 @@ jobs:
       - name: Install dependencies
         run: |
           composer install --no-interaction --no-progress
-          composer update
 
       - name: Run tests
         run: composer test
