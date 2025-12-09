@@ -1,106 +1,98 @@
 <?php
 
-declare(strict_types=1);
-
-namespace ZeroAd\Token\Tests;
-
 use PHPUnit\Framework\TestCase;
-use ZeroAd\Token\ClientHeader;
 use ZeroAd\Token\Constants;
 use ZeroAd\Token\Crypto;
+use ZeroAd\Token\Headers\ClientHeader;
+use ZeroAd\Token\Helpers;
 
-final class ClientHeaderTest extends TestCase
+class ClientHeaderTest extends TestCase
 {
-  private string $privateKey;
-  private string $publicKey;
+  private $privateKey;
+  private $publicKey;
+  private $clientId;
 
   protected function setUp(): void
   {
     $keys = Crypto::generateKeys();
     $this->privateKey = $keys["privateKey"];
     $this->publicKey = $keys["publicKey"];
+    $this->clientId = bin2hex(random_bytes(16));
   }
 
-  public function testDecodeGeneratesValidHeader()
+  public function testEncodeDecodeClientHeader()
   {
-    $header = new ClientHeader($this->publicKey, $this->privateKey);
+    $expiresAt = new \DateTimeImmutable("+1 day");
+    $features = [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]];
 
-    $expiresAt = new \DateTime()->add(new \DateInterval("P1D"));
-    $features = [
-      Constants::FEATURES["ADS_OFF"],
-      Constants::FEATURES["COOKIE_CONSENT_OFF"],
-      Constants::FEATURES["MARKETING_DIALOG_OFF"],
-    ];
+    $headerValue = ClientHeader::encodeClientHeader(
+      [
+        "version" => Constants::CURRENT_PROTOCOL_VERSION,
+        "expiresAt" => $expiresAt,
+        "features" => $features,
+      ],
+      $this->privateKey,
+    );
 
-    $headerValue = $header->encode(Constants::CURRENT_PROTOCOL_VERSION, $expiresAt, $features);
+    $decoded = ClientHeader::decodeClientHeader($headerValue, $this->publicKey);
 
-    $this->assertIsString($headerValue);
-
-    $decoded = $header->decode($headerValue);
+    $this->assertIsArray($decoded);
     $this->assertEquals(Constants::CURRENT_PROTOCOL_VERSION, $decoded["version"]);
-    $this->assertEquals((int) $expiresAt->format("U"), (int) $decoded["expiresAt"]->format("U"));
-    $this->assertEquals(7, $decoded["flags"]); // ADS_OFF | COOKIE_CONSENT_OFF | MARKETING_DIALOG_OFF
-
-    $featureMap = $header->parseToken($headerValue);
-    $this->assertTrue($featureMap["ADS_OFF"]);
-    $this->assertTrue($featureMap["COOKIE_CONSENT_OFF"]);
-    $this->assertTrue($featureMap["MARKETING_DIALOG_OFF"]);
-    $this->assertFalse($featureMap["CONTENT_PAYWALL_OFF"]);
-    $this->assertFalse($featureMap["SUBSCRIPTION_ACCESS_ON"]);
+    $this->assertEquals(Helpers::setFlags($features), $decoded["flags"]);
+    $this->assertEquals((int) $expiresAt->format("U"), $decoded["expiresAt"]->getTimestamp());
   }
 
-  public function testDecodeWithExpiredToken()
+  public function testParseClientTokenWithCleanWeb()
   {
-    $header = new ClientHeader($this->publicKey, $this->privateKey);
+    $expiresAt = new \DateTimeImmutable("+1 day");
+    $features = [Constants::FEATURES["CLEAN_WEB"]];
+    $headerValue = ClientHeader::encodeClientHeader(
+      [
+        "version" => Constants::CURRENT_PROTOCOL_VERSION,
+        "expiresAt" => $expiresAt,
+        "features" => $features,
+      ],
+      $this->privateKey,
+    );
 
-    $expiresAt = new \DateTime()->sub(new \DateInterval("P1D"));
-    $features = [
-      Constants::FEATURES["ADS_OFF"],
-      Constants::FEATURES["COOKIE_CONSENT_OFF"],
-      Constants::FEATURES["MARKETING_DIALOG_OFF"],
+    $parsed = ClientHeader::parseClientToken($headerValue, $this->clientId, $this->publicKey);
+
+    $expected = [
+      "HIDE_ADVERTISEMENTS" => true,
+      "HIDE_COOKIE_CONSENT_SCREEN" => true,
+      "HIDE_MARKETING_DIALOGS" => true,
+      "DISABLE_NON_FUNCTIONAL_TRACKING" => true,
+      "DISABLE_CONTENT_PAYWALL" => false,
+      "ENABLE_SUBSCRIPTION_ACCESS" => false,
     ];
 
-    $headerValue = $header->encode(Constants::CURRENT_PROTOCOL_VERSION, $expiresAt, $features);
-
-    $decoded = $header->decode($headerValue);
-    $this->assertEquals(Constants::CURRENT_PROTOCOL_VERSION, $decoded["version"]);
-    $this->assertEquals((int) $expiresAt->format("U"), (int) $decoded["expiresAt"]->format("U"));
-    $this->assertEquals(7, $decoded["flags"]);
-
-    $featureMap = $header->parseToken($headerValue);
-    $this->assertFalse($featureMap["ADS_OFF"]);
-    $this->assertFalse($featureMap["COOKIE_CONSENT_OFF"]);
-    $this->assertFalse($featureMap["MARKETING_DIALOG_OFF"]);
-    $this->assertFalse($featureMap["CONTENT_PAYWALL_OFF"]);
-    $this->assertFalse($featureMap["SUBSCRIPTION_ACCESS_ON"]);
+    $this->assertEquals($expected, $parsed);
   }
 
-  public function testForgedHeaderReturnsFalseMap()
+  public function testParseClientTokenWithOnePass()
   {
-    $header = new ClientHeader(Constants::ZEROAD_NETWORK_PUBLIC_KEY, $this->privateKey);
+    $expiresAt = new \DateTimeImmutable("+1 day");
+    $features = [Constants::FEATURES["ONE_PASS"]];
+    $headerValue = ClientHeader::encodeClientHeader(
+      [
+        "version" => Constants::CURRENT_PROTOCOL_VERSION,
+        "expiresAt" => $expiresAt,
+        "features" => $features,
+      ],
+      $this->privateKey,
+    );
 
-    $expiresAt = new \DateTime()->sub(new \DateInterval("P1D"));
-    $features = [
-      Constants::FEATURES["ADS_OFF"],
-      Constants::FEATURES["COOKIE_CONSENT_OFF"],
-      Constants::FEATURES["MARKETING_DIALOG_OFF"],
+    $parsed = ClientHeader::parseClientToken($headerValue, $this->clientId, $this->publicKey);
+
+    $expected = [
+      "HIDE_ADVERTISEMENTS" => false,
+      "HIDE_COOKIE_CONSENT_SCREEN" => false,
+      "HIDE_MARKETING_DIALOGS" => false,
+      "DISABLE_NON_FUNCTIONAL_TRACKING" => false,
+      "DISABLE_CONTENT_PAYWALL" => true,
+      "ENABLE_SUBSCRIPTION_ACCESS" => true,
     ];
 
-    $headerValue = $header->encode(Constants::CURRENT_PROTOCOL_VERSION, $expiresAt, $features);
-    $header->decode($headerValue);
-
-    $featureMap = $header->parseToken($headerValue);
-    foreach ($featureMap as $flag) {
-      $this->assertFalse($flag);
-    }
-  }
-
-  public function testParseTokenHandlesNull()
-  {
-    $header = new ClientHeader(Constants::ZEROAD_NETWORK_PUBLIC_KEY);
-    $featureMap = $header->parseToken(null);
-    foreach ($featureMap as $flag) {
-      $this->assertFalse($flag);
-    }
+    $this->assertEquals($expected, $parsed);
   }
 }

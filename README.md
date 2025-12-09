@@ -17,22 +17,22 @@ For detailed guides and implementation instructions, see the [official Zero Ad N
 
 ## Purpose
 
-This module helps developers to:
+The module helps developers to:
 
-- Inject a valid site's HTTP Response Header (**Welcome Header**) to every endpoint. Example:
+- Generate a valid "Welcome Header" when `clientId` and `features` are provided.
+- Inject a valid site's HTTP Response Header (**Welcome Header**) into every endpoint. Example:
 
   ```http
-  X-Better-Web-Welcome: "AZqnKU56eIC7vCD1PPlwHg^1^3"
+  X-Better-Web-Welcome: "Z2CclA8oXIT1e0QmqTWF8w^1^3"
   ```
 
-- Detect Zero Ad Network user tokens sent via HTTP Request Header. Example:
+- Detect and parse Zero Ad Network user tokens sent via HTTP Request Header. Example:
 
   ```http
   X-Better-Web-Hello: "Aav2IXRoh0oKBw==.2yZfC2/pM9DWfgX+von4IgWLmN9t67HJHLiee/gx4+pFIHHurwkC3PCHT1Kaz0yUhx3crUaxST+XLlRtJYacAQ=="
   ```
 
-- Parse and verify token integrity locally.
-- Optionally generate a valid "Welcome Header" when `siteId` and `features` are provided.
+- Verify client token integrity locally.
 
 ## Implementation Details
 
@@ -44,30 +44,33 @@ Parsed token example:
 
 ```php
 {
-  ADS_OFF: boolean,
-  COOKIE_CONSENT_OFF: boolean,
-  MARKETING_DIALOG_OFF: boolean,
-  CONTENT_PAYWALL_OFF: boolean,
-  SUBSCRIPTION_ACCESS_ON: boolean,
+  HIDE_ADVERTISEMENTS: boolean,
+  HIDE_COOKIE_CONSENT_SCREEN: boolean,
+  HIDE_MARKETING_DIALOGS: boolean,
+  DISABLE_NON_FUNCTIONAL_TRACKING: boolean,
+  DISABLE_CONTENT_PAYWALL: boolean,
+  ENABLE_SUBSCRIPTION_ACCESS: boolean,
 };
 ```
 
-- Verification is performed locally; no data leaves your server.
-- Parsing and verification add roughly 0.06ms–0.6ms to endpoint execution time (tested on M1 MacBook Pro). Performance may vary.
-- Redis caching tests showed local verification is faster than retrieving cached results.
+- Verification occurs locally; no data leaves your server.
+- Parsing and verification adds roughly 0.06ms–0.6ms to endpoint execution time (tested on M1 MacBook Pro). Performance may vary.
+- Redis caching tests show local verification is faster than retrieving cached results.
 
 ## Benefits of Joining
 
 Partnering with Zero Ad Network allows your site to:
 
-- Generate a new revenue stream
-- Provide a clean, unobstructed user experience
-- Contribute to a more joyful, user-friendly internet
+- Generate a new revenue stream by:
+  - Providing a clean, unobstructed user experience
+  - Removing paywalls and enabling free access to your base subscription plan
+  - Or both combined
+- Contribute to a truly joyful, user-friendly internet experience
 
 ## Onboarding Your Site
 
 1. [Sign up](https://zeroad.network/login) with Zero Ad Network.
-2. [Register your site](https://zeroad.network/publisher/sites/add) and receive your unique `X-Better-Web-Welcome` header.
+2. [Register your site](https://zeroad.network/publisher/sites/add) to receive your unique `X-Better-Web-Welcome` header.
 
 Your site must include this header on all publicly accessible HTML or RESTful endpoints so that Zero Ad Network users’ browser extensions can recognize participation.
 
@@ -96,16 +99,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
-// -----------------------------------------------------------------------------
-// Module initialization (once at startup)
-// -----------------------------------------------------------------------------
-// Initialize the Zero Ad Network Site module.
-// Option 1: Use pre-generated server "Welcome Header" value:
-//   $site = new Site(getenv('ZERO_AD_NETWORK_WELCOME_HEADER_VALUE'));
-// Option 2: Dynamically construct "Welcome Header" using siteId and features:
+// Initialize the Zero Ad Network module at app startup.
+// Your site's `clientId` value is obtained during site registration on the Zero Ad Network platform (https://zeroad.network).
+$ZERO_AD_NETWORK_CLIENT_ID = "Z2CclA8oXIT1e0QmqTWF8w";
 $site = new ZeroAd\Token\Site([
-  "siteId" => "073C3D79-B960-4335-B948-416AC1E3DBD4",
-  "features" => [ZeroAd\Token\Constants::FEATURES["ADS_OFF"]],
+  "clientId" => $ZERO_AD_NETWORK_CLIENT_ID,
+  "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]],
 ]);
 
 // -----------------------------------------------------------------------------
@@ -115,13 +114,13 @@ function tokenMiddleware(callable $handler)
 {
   global $site;
 
-  // Inject the server "X-Better-Web-Welcome" header
+  // Inject the "X-Better-Web-Welcome" header into the response
   header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
 
-  // Read and parse the client's token header if present
+  // Parse the incoming user token from the request header
   $tokenContext = $site->parseToken($_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
 
-  // Pass the parsed token context to the handler
+  // Attach the parsed token data to the request object for downstream use
   $handler($tokenContext);
 }
 
@@ -132,7 +131,7 @@ $uri = $_SERVER["REQUEST_URI"];
 
 if ($uri === "/") {
   tokenMiddleware(function ($tokenContext) {
-    // Render HTML page with token context for demonstration
+    // Render HTML page with `$tokenContext` for demonstration
     $template =
       '
         <html>
@@ -147,7 +146,7 @@ if ($uri === "/") {
     echo $template;
   });
 } elseif ($uri === "/json") {
-  // Return JSON response with token context
+  // Return JSON response with `$tokenContext`
   tokenMiddleware(function ($tokenContext) {
     header("Content-Type: application/json");
     echo json_encode([

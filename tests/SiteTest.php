@@ -1,45 +1,64 @@
 <?php
 
-declare(strict_types=1);
-
-namespace ZeroAd\Token\Tests;
-
 use PHPUnit\Framework\TestCase;
-use ZeroAd\Token\Site;
 use ZeroAd\Token\Constants;
+use ZeroAd\Token\Crypto;
+use ZeroAd\Token\Site;
 
-final class SiteTest extends TestCase
+class SiteTest extends TestCase
 {
-  private string $siteId = "073C3D79-B960-4335-B948-416AC1E3DBD4";
-  private string $expiredToken = "Aav2IXRoh0oKBw==.2yZfC2/pM9DWfgX+von4IgWLmN9t67HJHLiee/gx4+pFIHHurwkC3PCHT1Kaz0yUhx3crUaxST+XLlRtJYacAQ==";
+  private $privateKey;
+  private $publicKey;
+  private $clientId;
 
-  public function testServerHeaderGeneration()
+  protected function setUp(): void
+  {
+    $keys = Crypto::generateKeys();
+    $this->privateKey = $keys["privateKey"];
+    $this->publicKey = $keys["publicKey"];
+    $this->clientId = bin2hex(random_bytes(16));
+  }
+
+  public function testSiteServerHeader()
   {
     $site = new Site([
-      "siteId" => $this->siteId,
-      "features" => [Constants::FEATURES["ADS_OFF"], Constants::FEATURES["COOKIE_CONSENT_OFF"]],
+      "clientId" => $this->clientId,
+      "features" => [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]],
     ]);
+
     $this->assertEquals(Constants::SERVER_HEADERS["WELCOME"], $site->SERVER_HEADER_NAME);
-    // cspell:disable-next-line
-    $this->assertEquals("Bzw9eblgQzW5SEFqwePb1A^1^3", $site->SERVER_HEADER_VALUE);
+    $this->assertEquals("{$this->clientId}^1^3", $site->SERVER_HEADER_VALUE);
   }
 
-  public function testClientHeaderName()
+  public function testParseClientToken()
   {
-    $site = new Site(["siteId" => $this->siteId, "features" => [Constants::FEATURES["ADS_OFF"]]]);
-    $this->assertEquals(
-      "HTTP_" . strtoupper(str_replace("-", "_", Constants::CLIENT_HEADERS["HELLO"])),
-      $site->CLIENT_HEADER_NAME,
+    $site = new Site([
+      "clientId" => $this->clientId,
+      "features" => [Constants::FEATURES["CLEAN_WEB"]],
+    ]);
+
+    $expiresAt = new \DateTimeImmutable("+1 day");
+    $headerValue = \ZeroAd\Token\Headers\ClientHeader::encodeClientHeader(
+      [
+        "version" => Constants::CURRENT_PROTOCOL_VERSION,
+        "expiresAt" => $expiresAt,
+        "features" => [Constants::FEATURES["CLEAN_WEB"]],
+      ],
+      $this->privateKey,
     );
-  }
 
-  public function testParseTokenWithOfficialPublicKey()
-  {
-    $site = new Site(["siteId" => $this->siteId, "features" => [Constants::FEATURES["ADS_OFF"]]]);
-    $parsed = $site->parseToken($this->expiredToken);
+    $parsed = $site->parseClientToken($headerValue);
 
-    foreach ($parsed as $flag) {
-      $this->assertFalse($flag);
-    }
+    // Public key is different
+    $expected = [
+      "HIDE_ADVERTISEMENTS" => false,
+      "HIDE_COOKIE_CONSENT_SCREEN" => false,
+      "HIDE_MARKETING_DIALOGS" => false,
+      "DISABLE_NON_FUNCTIONAL_TRACKING" => false,
+      "DISABLE_CONTENT_PAYWALL" => false,
+      "ENABLE_SUBSCRIPTION_ACCESS" => false,
+    ];
+
+    $this->assertEquals($expected, $parsed);
   }
 }

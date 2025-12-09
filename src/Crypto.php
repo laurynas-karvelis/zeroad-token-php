@@ -1,120 +1,105 @@
 <?php
 
-declare(strict_types=1);
-
 namespace ZeroAd\Token;
+
+use ZeroAd\Token\Helpers;
 
 class Crypto
 {
+  private static array $keyCache = [];
+
   /**
-   * Generate an Ed25519 key pair and return base64-encoded strings.
+   * Generate new Ed25519 keypair in DER format
    */
   public static function generateKeys(): array
   {
-    $keypair = sodium_crypto_sign_keypair();
-    // cspell:words secretkey
-    $privateKey = sodium_crypto_sign_secretkey($keypair);
-    $publicKey = sodium_crypto_sign_publickey($keypair);
+    // Generate 32-byte seed
+    $seed = random_bytes(SODIUM_CRYPTO_SIGN_SEEDBYTES);
+
+    // Generate Sodium keypair
+    $keypair = sodium_crypto_sign_seed_keypair($seed);
+    $secret = sodium_crypto_sign_secretkey($keypair); // 64 bytes
+    $public = sodium_crypto_sign_publickey($keypair); // 32 bytes
+
+    // Build PKCS8 DER (private)
+    $privateDer = hex2bin("302e020100300506032b657004220420") . $seed;
+
+    // Build SPKI DER (public)
+    $publicDer = hex2bin("302a300506032b6570032100") . $public;
 
     return [
-      "privateKey" => base64_encode($privateKey),
-      "publicKey" => base64_encode($publicKey),
+      "privateKey" => Helpers::toBase64($privateDer),
+      "publicKey" => Helpers::toBase64($publicDer),
     ];
   }
 
   /**
-   * Import a private key from base64 string.
+   * Sign binary data using Ed25519 private key (DER PKCS8)
    */
-  public static function importPrivateKey(string $privateKeyBase64): string
+  public static function sign(string $data, string $privateKeyBase64): string
   {
-    $key = base64_decode($privateKeyBase64, true);
-    // cspell:words SECRETKEYBYTES
-    if ($key === false || strlen($key) !== SODIUM_CRYPTO_SIGN_SECRETKEYBYTES) {
-      throw new \InvalidArgumentException("Invalid private key");
-    }
-    return $key;
+    $pkey = self::importPrivateKey($privateKeyBase64);
+    return sodium_crypto_sign_detached($data, $pkey);
   }
 
   /**
-   * Import public key from Base64
-   *
-   * @param string $publicKeyBase64
-   * @return string Raw key binary
+   * Verify signature using Ed25519 public key (DER SPKI)
    */
-  public static function importPublicKey(string $publicKeyBase64): string
+  public static function verify(string $data, string $signature, string $publicKeyBase64): bool
   {
-    try {
-      $der = base64_decode($publicKeyBase64, true);
-      if ($der === false) {
-        throw new \InvalidArgumentException("Invalid Base64 public key");
-      }
-
-      $pem = self::spkiDerToPem($der);
-      $pkey = openssl_pkey_get_public($pem);
-      if ($pkey === false) {
-        throw new \RuntimeException("Could not parse SPKI public key");
-      }
-
-      $details = openssl_pkey_get_details($pkey);
-      if ($details === false || !isset($details["key"])) {
-        throw new \RuntimeException("Could not extract public key details");
-      }
-
-      return self::pemToRawEd25519Public($details["key"]);
-    } catch (\Exception $e) {
-      $key = base64_decode($publicKeyBase64, true);
-      if ($key === false || strlen($key) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
-        throw new \InvalidArgumentException("Invalid public key");
-      }
-      return $key;
-    }
+    $pkey = self::importPublicKey($publicKeyBase64);
+    return sodium_crypto_sign_verify_detached($signature, $data, $pkey);
   }
 
   /**
-   * Verify signature with Ed25519 public key
-   *
-   * @param string $data Binary string
-   * @param string $signature Binary signature
-   * @param string $publicKey Raw public key binary
-   * @return bool
+   * Generate cryptographically secure random bytes
    */
-  public static function verify(string $data, string $signature, string $publicKey): bool
+  public static function nonce(int $size): string
   {
-    return sodium_crypto_sign_verify_detached($signature, $data, $publicKey);
+    return random_bytes($size);
   }
 
   /**
-   * Convert PEM Ed25519 public key to raw 32-byte key
-   *
-   * @param string $pem
-   * @return string
+   * Import private key from DER PKCS8
    */
-  private static function pemToRawEd25519Public(string $pem): string
+  private static function importPrivateKey(string $base64Der)
   {
-    // Remove PEM headers/footers
-    $pem = preg_replace("/-----.*?-----/", "", $pem);
-    $der = base64_decode($pem, true);
-    if ($der === false) {
-      throw new \RuntimeException("Invalid PEM encoding");
+    if (isset(self::$keyCache[$base64Der])) {
+      return self::$keyCache[$base64Der];
     }
 
-    // For Ed25519 SPKI, the last 32 bytes of DER are the public key
-    // cspell:words PUBLICKEYBYTES
-    $raw = substr($der, -SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES);
-
-    if (strlen($raw) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
-      throw new \RuntimeException("Invalid public key length: " . strlen($raw));
+    $der = base64_decode($base64Der, true);
+    if ($der === false || strlen($der) < SODIUM_CRYPTO_SIGN_SEEDBYTES) {
+      throw new \Exception("Invalid DER private key");
     }
 
-    return $raw;
+    // PKCS8 DER from TS: last 32 bytes = seed
+    $seed = substr($der, -SODIUM_CRYPTO_SIGN_SEEDBYTES);
+    $keypair = sodium_crypto_sign_seed_keypair($seed);
+    $pkey = sodium_crypto_sign_secretkey($keypair);
+
+    self::$keyCache[$base64Der] = $pkey;
+    return $pkey;
   }
 
   /**
-   * Converts SPKI DER encoded key to PEM
+   * Import public key from DER SPKI
    */
-  private static function spkiDerToPem(string $der): string
+  private static function importPublicKey(string $base64Der)
   {
-    $base64 = chunk_split(base64_encode($der), 64);
-    return "-----BEGIN PUBLIC KEY-----\n{$base64}-----END PUBLIC KEY-----\n";
+    if (isset(self::$keyCache[$base64Der])) {
+      return self::$keyCache[$base64Der];
+    }
+
+    $der = base64_decode($base64Der, true);
+    if ($der === false || strlen($der) < SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+      throw new \Exception("Invalid DER public key");
+    }
+
+    // Last 32 bytes = raw public key
+    $pkey = substr($der, -SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES);
+
+    self::$keyCache[$base64Der] = $pkey;
+    return $pkey;
   }
 }

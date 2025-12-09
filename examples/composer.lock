@@ -12,14 +12,14 @@
             "dist": {
                 "type": "path",
                 "url": "..",
-                "reference": "df18eda4b371cb22e973a7260eec03eca537717e"
+                "reference": "38ba832d75509d89af210836ff976d979c93f8e2"
             },
             "require": {
                 "ext-sodium": "*",
                 "php": ">=7.2.0"
             },
             "require-dev": {
-                "phpunit/phpunit": "^12.4"
+                "phpunit/phpunit": "^12.5.2"
             },
             "type": "library",
             "autoload": {
@@ -32,6 +32,11 @@
                     "ZeroAd\\Token\\Tests\\": "tests/"
                 }
             },
+            "scripts": {
+                "test": [
+                    "./vendor/bin/phpunit --testdox --bootstrap vendor/autoload.php tests"
+                ]
+            },
             "license": [
                 "Apache-2.0"
             ],
@@ -43,12 +48,29 @@
                     "role": "Developer"
                 }
             ],
-            "description": "Client token parsing helper library",
+            "description": "An HTTP-header-based \"access / entitlement token\" library for Zero Ad Network partnering sites using PHP",
             "homepage": "http://zeroad.network",
             "keywords": [
-                "better web",
-                "zero ad",
-                "zero ad network",
+                "access-token",
+                "ad-free",
+                "ads-free",
+                "api",
+                "auth",
+                "authorization",
+                "composer",
+                "content-access",
+                "entitlement",
+                "feature-flags",
+                "http-header",
+                "middleware",
+                "paywall",
+                "php",
+                "sodium",
+                "subscription",
+                "token",
+                "web-server",
+                "welcome-header",
+                "zero-ad",
                 "zeroad"
             ],
             "transport-options": {

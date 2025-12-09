@@ -1,61 +1,35 @@
 <?php
 
-declare(strict_types=1);
-
-namespace ZeroAd\Token\Tests;
-
 use PHPUnit\Framework\TestCase;
-use ZeroAd\Token\ServerHeader;
 use ZeroAd\Token\Constants;
+use ZeroAd\Token\Headers\ServerHeader;
 
-final class ServerHeaderTest extends TestCase
+class ServerHeaderTest extends TestCase
 {
-  private string $siteId = "6418723C-9D55-4B95-B9CE-BC4DBDFFC812";
+  private $clientId;
 
-  public function testConstructorValidations()
+  protected function setUp(): void
   {
-    $this->expectException(\InvalidArgumentException::class);
-    new ServerHeader(null);
-
-    $this->expectException(\InvalidArgumentException::class);
-    new ServerHeader("");
-
-    $this->expectException(\InvalidArgumentException::class);
-    new ServerHeader(["features" => [Constants::FEATURES["ADS_OFF"]]]);
-
-    $this->expectException(\InvalidArgumentException::class);
-    new ServerHeader(["siteId" => "", "features" => [Constants::FEATURES["ADS_OFF"]]]);
-
-    $this->expectException(\InvalidArgumentException::class);
-    new ServerHeader(["siteId" => $this->siteId]);
+    $this->clientId = bin2hex(random_bytes(16));
   }
 
-  public function testConstructorWithValidValue()
+  public function testEncodeDecodeServerHeader()
   {
-    $header = new ServerHeader("ZBhyPJ1VS5W5zrxNvf/IEg^1^3");
-    $this->assertEquals("ZBhyPJ1VS5W5zrxNvf/IEg^1^3", $header->VALUE);
+    $features = [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]];
+    $header = ServerHeader::encodeServerHeader($this->clientId, $features);
 
-    $header2 = new ServerHeader([
-      "siteId" => $this->siteId,
-      "features" => [Constants::FEATURES["ADS_OFF"], Constants::FEATURES["SUBSCRIPTION_ACCESS_ON"]],
-    ]);
-    $this->assertEquals("ZBhyPJ1VS5W5zrxNvf/IEg^1^17", $header2->VALUE);
-  }
+    $this->assertEquals("{$this->clientId}^1^3", $header);
 
-  public function testDecodeValidHeader()
-  {
-    $decoded = ServerHeader::decode("ZBhyPJ1VS5W5zrxNvf/IEg^1^3");
-    $this->assertEquals(strtolower($this->siteId), strtolower($decoded["siteId"]));
-    $this->assertContains("ADS_OFF", $decoded["features"]);
-    $this->assertContains("COOKIE_CONSENT_OFF", $decoded["features"]);
+    $decoded = ServerHeader::decodeServerHeader($header);
+    $this->assertEquals($this->clientId, $decoded["clientId"]);
+    $this->assertEquals(["CLEAN_WEB", "ONE_PASS"], $decoded["features"]);
     $this->assertEquals(1, $decoded["version"]);
   }
 
-  public function testDecodeInvalidHeaders()
+  public function testDecodeInvalidHeader()
   {
-    $this->assertNull(ServerHeader::decode(""));
-    $this->assertNull(ServerHeader::decode(null));
-    $this->assertNull(ServerHeader::decode("1^1"));
-    $this->assertNull(ServerHeader::decode("invalid^1^1"));
+    $this->assertNull(ServerHeader::decodeServerHeader(""));
+    $this->assertNull(ServerHeader::decodeServerHeader(null));
+    $this->assertNull(ServerHeader::decodeServerHeader("invalid^header"));
   }
 }

@@ -1,32 +1,37 @@
 <?php
 
-declare(strict_types=1);
-
 namespace ZeroAd\Token;
+
+use ZeroAd\Token\Headers\ClientHeader;
+use ZeroAd\Token\Headers\ServerHeader;
 
 class Site
 {
-  public string $CLIENT_HEADER_NAME;
-  public string $SERVER_HEADER_NAME;
-  public string $SERVER_HEADER_VALUE;
+  private $clientId;
 
-  private ClientHeader $clientHeader;
+  public $CLIENT_HEADER_NAME;
+  public $SERVER_HEADER_NAME;
+  public $SERVER_HEADER_VALUE;
 
-  public function __construct($options)
+  public function __construct(array $params)
   {
-    $serverHeader = new ServerHeader($options);
-    $this->clientHeader = new ClientHeader(Constants::ZEROAD_NETWORK_PUBLIC_KEY);
+    if (!isset($params["clientId"]) || !is_string($params["clientId"]) || $params["clientId"] === "") {
+      throw new \InvalidArgumentException("`clientId` must be a non-empty string.");
+    }
 
-    $this->SERVER_HEADER_NAME = $serverHeader->NAME;
-    $this->SERVER_HEADER_VALUE = $serverHeader->VALUE;
-    $this->CLIENT_HEADER_NAME = $this->clientHeader->NAME;
+    if (!isset($params["features"]) || !is_array($params["features"]) || count($params["features"]) === 0) {
+      throw new \InvalidArgumentException("At least one Site feature must be provided.");
+    }
+
+    $this->clientId = $params["clientId"];
+
+    $this->SERVER_HEADER_VALUE = ServerHeader::encodeServerHeader($params["clientId"], $params["features"]);
+    $this->SERVER_HEADER_NAME = Constants::SERVER_HEADERS["WELCOME"];
+    $this->CLIENT_HEADER_NAME = "HTTP_" . strtoupper(str_replace("-", "_", Constants::CLIENT_HEADERS["HELLO"]));
   }
 
-  /**
-   * Parses a client token and returns a feature map
-   */
-  public function parseToken(?string $headerValue): array
+  public function parseClientToken(?string $headerValue): array
   {
-    return $this->clientHeader->parseToken($headerValue);
+    return ClientHeader::parseClientToken($headerValue, $this->clientId, Constants::ZEROAD_NETWORK_PUBLIC_KEY);
   }
 }

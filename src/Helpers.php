@@ -1,55 +1,41 @@
 <?php
 
-declare(strict_types=1);
-
 namespace ZeroAd\Token;
 
 class Helpers
 {
-  public static function uuidToBase64(string $uuid): string
+  public static function toBase64(string $data): string
   {
-    $hex = str_replace("-", "", $uuid);
-    if (strlen($hex) !== 32) {
-      throw new \InvalidArgumentException("Invalid UUID format");
+    return base64_encode($data);
+  }
+
+  public static function fromBase64(string $input): string
+  {
+    $decoded = base64_decode($input, true);
+    if ($decoded === false) {
+      throw new \Exception("Base64 decoding failed");
     }
-    $bytes = hex2bin($hex);
-    return rtrim(base64_encode($bytes), "=");
+    return $decoded;
   }
 
-  public static function base64ToUuid(string $input): string
+  public static function assert($value, string $message)
   {
-    $bytes = base64_decode($input . str_repeat("=", (4 - (strlen($input) % 4)) % 4), true);
-    if (!$bytes || strlen($bytes) !== 16) {
-      throw new \InvalidArgumentException("Invalid byte length for UUID");
+    if (!$value) {
+      throw new \Exception($message);
     }
-    $hex = bin2hex($bytes);
-    return sprintf(
-      "%s-%s-%s-%s-%s",
-      substr($hex, 0, 8),
-      substr($hex, 8, 4),
-      substr($hex, 12, 4),
-      substr($hex, 16, 4),
-      substr($hex, 20, 12),
-    );
   }
 
-  public static function hasFeature(int $flags, int $feature): bool
+  public static function hasFlag(int $bit, int $flags): bool
   {
-    return (bool) ($flags & $feature);
+    return ($bit & $flags) !== 0;
   }
 
-  public static function setFeatures(int $flags = 0, array $features = []): int
+  public static function setFlags(array $features = []): int
   {
+    $acc = 0;
     foreach ($features as $feature) {
-      $flags |= $feature;
+      $acc |= $feature;
     }
-    return $flags;
-  }
-  /**
-   * Minimal logger stub
-   */
-  public static function logger(string $level, string $message, array $context = [])
-  {
-    error_log(strtoupper($level) . ": " . $message . " " . json_encode($context));
+    return $acc;
   }
 }
