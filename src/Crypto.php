@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZeroAd\Token;
 
 use ZeroAd\Token\Helpers;
 
 class Crypto
 {
-  private static array $keyCache = [];
+  private static $keyCache = [];
 
   /**
    * Generate new Ed25519 keypair in DER format
@@ -29,7 +31,7 @@ class Crypto
 
     return [
       "privateKey" => Helpers::toBase64($privateDer),
-      "publicKey" => Helpers::toBase64($publicDer),
+      "publicKey" => Helpers::toBase64($publicDer)
     ];
   }
 

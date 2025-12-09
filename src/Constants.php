@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZeroAd\Token;
 
 class Constants
@@ -30,19 +32,19 @@ class Constants
      *  - Provide Free access to content behind a paywall (news, articles, etc.);
      *  - Provide Free access to your base subscription plan (if subscription model is present).
      */
-    "ONE_PASS" => 1 << 1,
+    "ONE_PASS" => 1 << 1
   ];
 
   public const SERVER_HEADERS = [
-    "WELCOME" => "X-Better-Web-Welcome",
+    "WELCOME" => "X-Better-Web-Welcome"
   ];
 
   public const CLIENT_HEADERS = [
-    "HELLO" => "X-Better-Web-Hello",
+    "HELLO" => "X-Better-Web-Hello"
   ];
 
   public const PROTOCOL_VERSION = [
-    "V_1" => 1,
+    "V_1" => 1
   ];
 
   public const CURRENT_PROTOCOL_VERSION = self::PROTOCOL_VERSION["V_1"];

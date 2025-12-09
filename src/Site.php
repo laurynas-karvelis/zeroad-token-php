@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZeroAd\Token;
 
 use ZeroAd\Token\Headers\ClientHeader;

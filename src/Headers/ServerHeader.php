@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZeroAd\Token\Headers;
 
 use ZeroAd\Token\Constants;
@@ -46,7 +48,7 @@ class ServerHeader
 
       $features = [];
       foreach (Constants::FEATURES as $feature => $bit) {
-        if (Helpers::hasFlag($flags, $bit)) {
+        if (Helpers::hasFlag((int) $flags, $bit)) {
           $features[] = $feature;
         }
       }
@@ -54,7 +56,7 @@ class ServerHeader
       return [
         "clientId" => $clientId,
         "version" => (int) $protocolVersion,
-        "features" => $features,
+        "features" => $features
       ];
     } catch (\Exception $e) {
       Logger::log("warn", "Could not decode server header value", ["reason" => $e->getMessage()]);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use PHPUnit\Framework\TestCase;
 use ZeroAd\Token\Constants;
 use ZeroAd\Token\Crypto;
@@ -23,7 +25,7 @@ class SiteTest extends TestCase
   {
     $site = new Site([
       "clientId" => $this->clientId,
-      "features" => [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]],
+      "features" => [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]]
     ]);
 
     $this->assertEquals(Constants::SERVER_HEADERS["WELCOME"], $site->SERVER_HEADER_NAME);
@@ -34,7 +36,7 @@ class SiteTest extends TestCase
   {
     $site = new Site([
       "clientId" => $this->clientId,
-      "features" => [Constants::FEATURES["CLEAN_WEB"]],
+      "features" => [Constants::FEATURES["CLEAN_WEB"]]
     ]);
 
     $expiresAt = new \DateTimeImmutable("+1 day");
@@ -42,9 +44,9 @@ class SiteTest extends TestCase
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
         "expiresAt" => $expiresAt,
-        "features" => [Constants::FEATURES["CLEAN_WEB"]],
+        "features" => [Constants::FEATURES["CLEAN_WEB"]]
       ],
-      $this->privateKey,
+      $this->privateKey
     );
 
     $parsed = $site->parseClientToken($headerValue);
@@ -56,7 +58,7 @@ class SiteTest extends TestCase
       "HIDE_MARKETING_DIALOGS" => false,
       "DISABLE_NON_FUNCTIONAL_TRACKING" => false,
       "DISABLE_CONTENT_PAYWALL" => false,
-      "ENABLE_SUBSCRIPTION_ACCESS" => false,
+      "ENABLE_SUBSCRIPTION_ACCESS" => false
     ];
 
     $this->assertEquals($expected, $parsed);

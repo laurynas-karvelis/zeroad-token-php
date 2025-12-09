@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use PHPUnit\Framework\TestCase;
 use ZeroAd\Token\Constants;
 use ZeroAd\Token\Crypto;
@@ -29,9 +31,9 @@ class ClientHeaderTest extends TestCase
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
         "expiresAt" => $expiresAt,
-        "features" => $features,
+        "features" => $features
       ],
-      $this->privateKey,
+      $this->privateKey
     );
 
     $decoded = ClientHeader::decodeClientHeader($headerValue, $this->publicKey);
@@ -50,9 +52,9 @@ class ClientHeaderTest extends TestCase
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
         "expiresAt" => $expiresAt,
-        "features" => $features,
+        "features" => $features
       ],
-      $this->privateKey,
+      $this->privateKey
     );
 
     $parsed = ClientHeader::parseClientToken($headerValue, $this->clientId, $this->publicKey);
@@ -63,7 +65,7 @@ class ClientHeaderTest extends TestCase
       "HIDE_MARKETING_DIALOGS" => true,
       "DISABLE_NON_FUNCTIONAL_TRACKING" => true,
       "DISABLE_CONTENT_PAYWALL" => false,
-      "ENABLE_SUBSCRIPTION_ACCESS" => false,
+      "ENABLE_SUBSCRIPTION_ACCESS" => false
     ];
 
     $this->assertEquals($expected, $parsed);
@@ -77,9 +79,9 @@ class ClientHeaderTest extends TestCase
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
         "expiresAt" => $expiresAt,
-        "features" => $features,
+        "features" => $features
       ],
-      $this->privateKey,
+      $this->privateKey
     );
 
     $parsed = ClientHeader::parseClientToken($headerValue, $this->clientId, $this->publicKey);
@@ -90,7 +92,7 @@ class ClientHeaderTest extends TestCase
       "HIDE_MARKETING_DIALOGS" => false,
       "DISABLE_NON_FUNCTIONAL_TRACKING" => false,
       "DISABLE_CONTENT_PAYWALL" => true,
-      "ENABLE_SUBSCRIPTION_ACCESS" => true,
+      "ENABLE_SUBSCRIPTION_ACCESS" => true
     ];
 
     $this->assertEquals($expected, $parsed);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZeroAd\Token;
 
 class Logger
@@ -8,7 +10,7 @@ class Logger
     "error" => 0,
     "warn" => 1,
     "info" => 2,
-    "debug" => 3,
+    "debug" => 3
   ];
 
   private static $currentLevel = "error";
@@ -31,7 +33,7 @@ class Logger
           " ",
           array_map(function ($v) {
             return is_array($v) || is_object($v) ? json_encode($v) : (string) $v;
-          }, $args),
+          }, $args)
         );
       echo $msg . PHP_EOL;
     }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace ZeroAd\Token\Headers;
 
 use ZeroAd\Token\Constants;
@@ -56,11 +58,14 @@ class ClientHeader
         $clientId = substr($dataBytes, $expectedLength);
       }
 
+      $expiresAtDt = new \DateTime();
+      $expiresAtDt->setTimestamp($expiresAt);
+
       return [
         "version" => $version,
-        "expiresAt" => new \DateTime()->setTimestamp($expiresAt),
+        "expiresAt" => $expiresAtDt,
         "flags" => $flags,
-        "clientId" => $clientId ?? null,
+        "clientId" => $clientId ?? null
       ];
     } catch (\Exception $e) {
       Logger::log("warn", "Could not decode client header value", ["reason" => $e->getMessage()]);
@@ -96,7 +101,7 @@ class ClientHeader
       "HIDE_MARKETING_DIALOGS" => $hasCleanWeb,
       "DISABLE_NON_FUNCTIONAL_TRACKING" => $hasCleanWeb,
       "DISABLE_CONTENT_PAYWALL" => $hasOnePass,
-      "ENABLE_SUBSCRIPTION_ACCESS" => $hasOnePass,
+      "ENABLE_SUBSCRIPTION_ACCESS" => $hasOnePass
     ];
   }
 }
