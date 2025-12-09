@@ -8,6 +8,7 @@ use ZeroAd\Token\Helpers;
 
 class Crypto
 {
+  // cspell:words secretkey
   private static $keyCache = [];
 
   /**

@@ -43,14 +43,14 @@ The module helps developers to:
 Parsed token example:
 
 ```php
-{
-  HIDE_ADVERTISEMENTS: boolean,
-  HIDE_COOKIE_CONSENT_SCREEN: boolean,
-  HIDE_MARKETING_DIALOGS: boolean,
-  DISABLE_NON_FUNCTIONAL_TRACKING: boolean,
-  DISABLE_CONTENT_PAYWALL: boolean,
-  ENABLE_SUBSCRIPTION_ACCESS: boolean,
-};
+[
+  "HIDE_ADVERTISEMENTS" => boolean,
+  "HIDE_COOKIE_CONSENT_SCREEN" => boolean,
+  "HIDE_MARKETING_DIALOGS" => boolean,
+  "DISABLE_NON_FUNCTIONAL_TRACKING" => boolean,
+  "DISABLE_CONTENT_PAYWALL" => boolean,
+  "ENABLE_SUBSCRIPTION_ACCESS" => boolean
+];
 ```
 
 - Verification occurs locally; no data leaves your server.
@@ -104,7 +104,7 @@ require_once __DIR__ . "/../vendor/autoload.php";
 $ZERO_AD_NETWORK_CLIENT_ID = "Z2CclA8oXIT1e0QmqTWF8w";
 $site = new ZeroAd\Token\Site([
   "clientId" => $ZERO_AD_NETWORK_CLIENT_ID,
-  "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]],
+  "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]]
 ]);
 
 // -----------------------------------------------------------------------------
@@ -151,7 +151,7 @@ if ($uri === "/") {
     header("Content-Type: application/json");
     echo json_encode([
       "message" => "OK",
-      "tokenContext" => $tokenContext,
+      "tokenContext" => $tokenContext
     ]);
   });
 } else {
