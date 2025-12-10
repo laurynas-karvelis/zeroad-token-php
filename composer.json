@@ -49,17 +49,11 @@
     "platform": {
       "php": "7.2.34"
     },
-    "optimize-autoloader": true,
     "sort-packages": true
   },
   "autoload": {
     "psr-4": {
       "ZeroAd\\Token\\": "src/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "ZeroAd\\Token\\Tests\\": "tests/"
     }
   }
 }

@@ -10,7 +10,7 @@ require_once __DIR__ . "/../vendor/autoload.php";
 
 $site = new ZeroAd\Token\Site([
   "clientId" => "Z2CclA8oXIT1e0QmqTWF8w",
-  "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]],
+  "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]]
 ]);
 
 // -----------------------------------------------------------------------------
@@ -58,7 +58,7 @@ if ($uri === "/") {
     header("Content-Type: application/json");
     echo json_encode([
       "message" => "OK",
-      "tokenContext" => $tokenContext,
+      "tokenContext" => $tokenContext
     ]);
   });
 } else {
