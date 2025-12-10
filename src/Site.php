@@ -10,6 +10,7 @@ use ZeroAd\Token\Headers\ServerHeader;
 class Site
 {
   private $clientId;
+  private $features;
 
   public $CLIENT_HEADER_NAME;
   public $SERVER_HEADER_NAME;
@@ -22,10 +23,11 @@ class Site
     }
 
     if (!isset($params["features"]) || !is_array($params["features"]) || count($params["features"]) === 0) {
-      throw new \InvalidArgumentException("At least one Site feature must be provided.");
+      throw new \InvalidArgumentException("At least one site feature must be provided.");
     }
 
     $this->clientId = $params["clientId"];
+    $this->features = $params["features"];
 
     $this->SERVER_HEADER_VALUE = ServerHeader::encodeServerHeader($params["clientId"], $params["features"]);
     $this->SERVER_HEADER_NAME = Constants::SERVER_HEADERS["WELCOME"];
@@ -34,6 +36,9 @@ class Site
 
   public function parseClientToken(?string $headerValue): array
   {
-    return ClientHeader::parseClientToken($headerValue, $this->clientId, Constants::ZEROAD_NETWORK_PUBLIC_KEY);
+    return ClientHeader::parseClientToken($headerValue, [
+      "clientId" => $this->clientId,
+      "features" => $this->features
+    ]);
   }
 }

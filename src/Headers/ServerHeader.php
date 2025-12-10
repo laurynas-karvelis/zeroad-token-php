@@ -18,14 +18,14 @@ class ServerHeader
       throw new \Exception("The provided `clientId` value cannot be an empty string");
     }
     if (empty($features)) {
-      throw new \Exception("At least one Site feature must be provided");
+      throw new \Exception("At least one site feature must be provided");
     }
 
     $validValues = array_values(Constants::FEATURES);
     foreach ($features as $f) {
       if (!in_array($f, $validValues, true)) {
         $validKeys = implode(" | ", array_keys(Constants::FEATURES));
-        throw new \Exception("Only valid Site features are allowed: {$validKeys}");
+        throw new \Exception("Only valid site features are allowed: {$validKeys}");
       }
     }
 
