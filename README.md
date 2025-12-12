@@ -84,6 +84,8 @@ composer require zeroad.network/token
 
 ## Examples
 
+For more a live demo implementation using PHP composer, visit the [examples section on our GitHub repository](https://github.com/laurynas-karvelis/zeroad-token-php/tree/main/examples/).
+
 The following PHP example demonstrates how to:
 
 - Inject the "Welcome Header" into responses
