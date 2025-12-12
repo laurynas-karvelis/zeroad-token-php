@@ -99,9 +99,12 @@ declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
 
+// Assume this file implements `render(string $template, array $locals = []): string` function which we'll use later
+require_once __DIR__ . "/render.php";
+
 // Initialize the Zero Ad Network module at app startup.
 // Your site's `clientId` value is obtained during site registration on the Zero Ad Network platform (https://zeroad.network).
-$ZERO_AD_NETWORK_CLIENT_ID = "Z2CclA8oXIT1e0QmqTWF8w";
+$ZERO_AD_NETWORK_CLIENT_ID = "DEMO-Z2CclA8oXIT1e0Qmq";
 $site = new ZeroAd\Token\Site([
   "clientId" => $ZERO_AD_NETWORK_CLIENT_ID,
   "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]]
@@ -132,18 +135,7 @@ $uri = $_SERVER["REQUEST_URI"];
 if ($uri === "/") {
   tokenMiddleware(function ($tokenContext) {
     // Render HTML page with `$tokenContext` for demonstration
-    $template =
-      '
-        <html>
-            <body>
-                <h1>Hello</h1>
-                <pre>tokenContext = ' .
-      htmlspecialchars(json_encode($tokenContext, JSON_PRETTY_PRINT)) .
-      '</pre>
-            </body>
-        </html>
-        ';
-    echo $template;
+    echo render("homepage", ["tokenContext" => $tokenContext]);
   });
 } elseif ($uri === "/json") {
   // Return JSON response with `$tokenContext`

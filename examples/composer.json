@@ -4,20 +4,14 @@
   "type": "project",
   "minimum-stability": "dev",
   "scripts": {
-    "serve": "php -S localhost:8080 -t public/"
+    "start": "php -S localhost:8080 -t public/"
   },
-  "repositories": [
-    {
-      "type": "path",
-      "url": "../",
-      "options": {
-        "symlink": true
-      }
-    }
-  ],
+  "config": {
+    "process-timeout": 0
+  },
   "require": {
     "php": ">=7.2.0",
     "ext-sodium": "*",
-    "zeroad.network/token": "*"
+    "zeroad.network/token": "^0.13.12"
   }
 }

@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 require_once __DIR__ . "/../vendor/autoload.php";
+require_once __DIR__ . "/render.php";
 
 /**
  * Module initialization (once at startup)
  */
 
 $site = new ZeroAd\Token\Site([
-  "clientId" => "Z2CclA8oXIT1e0QmqTWF8w",
+  "clientId" => "DEMO-Z2CclA8oXIT1e0Qmq",
   "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]]
 ]);
 
@@ -39,26 +40,15 @@ $uri = $_SERVER["REQUEST_URI"];
 if ($uri === "/") {
   tokenMiddleware(function ($tokenContext) {
     // Render HTML page with `$tokenContext` for demonstration
-    $template =
-      '
-        <html>
-            <body>
-                <h1>Hello</h1>
-                <pre>tokenContext = ' .
-      htmlspecialchars(json_encode($tokenContext, JSON_PRETTY_PRINT)) .
-      '</pre>
-            </body>
-        </html>
-        ';
-    echo $template;
+    echo render("homepage", ["tokenContext" => $tokenContext]);
   });
-} elseif ($uri === "/json") {
+} elseif ($uri === "/token") {
   // Return JSON response with `$tokenContext` for API usage
   tokenMiddleware(function ($tokenContext) {
     header("Content-Type: application/json");
     echo json_encode([
       "message" => "OK",
-      "tokenContext" => $tokenContext
+      "tokenContext" => $tokenContext ?? []
     ]);
   });
 } else {
