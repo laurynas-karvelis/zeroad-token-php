@@ -145,7 +145,7 @@ if ($uri === "/") {
     header("Content-Type: application/json");
     echo json_encode([
       "message" => "OK",
-      "tokenContext" => $tokenContext
+      "tokenContext" => $tokenContext ?? []
     ]);
   });
 } else {
