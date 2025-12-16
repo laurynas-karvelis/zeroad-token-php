@@ -17,7 +17,7 @@ class ServerHeaderTest extends TestCase
 
   public function testEncodeDecodeServerHeader()
   {
-    $features = [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]];
+    $features = [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]];
     $header = ServerHeader::encodeServerHeader($this->clientId, $features);
 
     $this->assertEquals("{$this->clientId}^1^3", $header);

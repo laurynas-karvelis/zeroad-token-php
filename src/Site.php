@@ -30,8 +30,8 @@ class Site
     $this->features = $params["features"];
 
     $this->SERVER_HEADER_VALUE = ServerHeader::encodeServerHeader($params["clientId"], $params["features"]);
-    $this->SERVER_HEADER_NAME = Constants::SERVER_HEADERS["WELCOME"];
-    $this->CLIENT_HEADER_NAME = "HTTP_" . strtoupper(str_replace("-", "_", Constants::CLIENT_HEADERS["HELLO"]));
+    $this->SERVER_HEADER_NAME = Constants::SERVER_HEADER["WELCOME"];
+    $this->CLIENT_HEADER_NAME = "HTTP_" . strtoupper(str_replace("-", "_", Constants::CLIENT_HEADER["HELLO"]));
   }
 
   public function parseClientToken(?string $headerValue): array

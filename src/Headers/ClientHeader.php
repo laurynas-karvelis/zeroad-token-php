@@ -15,14 +15,14 @@ class ClientHeader
   const NONCE_BYTES = 4;
   const SEPARATOR = ".";
 
-  const FEATURES_TO_ACTIONS = [
-    Constants::FEATURES["CLEAN_WEB"] => [
+  const FEATURE_TO_ACTIONS = [
+    Constants::FEATURE["CLEAN_WEB"] => [
       "HIDE_ADVERTISEMENTS",
       "HIDE_COOKIE_CONSENT_SCREEN",
       "HIDE_MARKETING_DIALOGS",
       "DISABLE_NON_FUNCTIONAL_TRACKING"
     ],
-    Constants::FEATURES["ONE_PASS"] => ["DISABLE_CONTENT_PAYWALL", "ENABLE_SUBSCRIPTION_ACCESS"]
+    Constants::FEATURE["ONE_PASS"] => ["DISABLE_CONTENT_PAYWALL", "ENABLE_SUBSCRIPTION_ACCESS"]
   ];
 
   public static function encodeClientHeader(array $data, string $privateKey): string
@@ -53,7 +53,7 @@ class ClientHeader
     }
 
     $context = [];
-    foreach (self::FEATURES_TO_ACTIONS as $feature => $actionNames) {
+    foreach (self::FEATURE_TO_ACTIONS as $feature => $actionNames) {
       $decision = in_array($feature, $options["features"] ?? [], true) && Helpers::hasFlag($feature, $flags);
 
       foreach ($actionNames as $actionName) {

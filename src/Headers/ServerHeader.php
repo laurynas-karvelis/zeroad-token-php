@@ -21,10 +21,10 @@ class ServerHeader
       throw new \Exception("At least one site feature must be provided");
     }
 
-    $validValues = array_values(Constants::FEATURES);
+    $validValues = array_values(Constants::FEATURE);
     foreach ($features as $f) {
       if (!in_array($f, $validValues, true)) {
-        $validKeys = implode(" | ", array_keys(Constants::FEATURES));
+        $validKeys = implode(" | ", array_keys(Constants::FEATURE));
         throw new \Exception("Only valid site features are allowed: {$validKeys}");
       }
     }
@@ -47,7 +47,7 @@ class ServerHeader
       Helpers::assert((string) (int) $flags === $flags, "Invalid flags number");
 
       $features = [];
-      foreach (Constants::FEATURES as $feature => $bit) {
+      foreach (Constants::FEATURE as $feature => $bit) {
         if (Helpers::hasFlag((int) $flags, $bit)) {
           $features[] = $feature;
         }

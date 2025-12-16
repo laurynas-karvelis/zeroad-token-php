@@ -11,7 +11,7 @@ require_once __DIR__ . "/render.php";
 
 $site = new ZeroAd\Token\Site([
   "clientId" => "DEMO-Z2CclA8oXIT1e0Qmq",
-  "features" => [ZeroAd\Token\Constants::FEATURES["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURES["ONE_PASS"]]
+  "features" => [ZeroAd\Token\Constants::FEATURE["CLEAN_WEB"], ZeroAd\Token\Constants::FEATURE["ONE_PASS"]]
 ]);
 
 // -----------------------------------------------------------------------------

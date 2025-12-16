@@ -25,10 +25,10 @@ class SiteTest extends TestCase
   {
     $site = new Site([
       "clientId" => $this->clientId,
-      "features" => [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]]
+      "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]]
     ]);
 
-    $this->assertEquals(Constants::SERVER_HEADERS["WELCOME"], $site->SERVER_HEADER_NAME);
+    $this->assertEquals(Constants::SERVER_HEADER["WELCOME"], $site->SERVER_HEADER_NAME);
     $this->assertEquals("{$this->clientId}^1^3", $site->SERVER_HEADER_VALUE);
   }
 
@@ -36,7 +36,7 @@ class SiteTest extends TestCase
   {
     $site = new Site([
       "clientId" => $this->clientId,
-      "features" => [Constants::FEATURES["CLEAN_WEB"]]
+      "features" => [Constants::FEATURE["CLEAN_WEB"]]
     ]);
 
     $expiresAt = new \DateTimeImmutable("+1 day");
@@ -44,7 +44,7 @@ class SiteTest extends TestCase
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
         "expiresAt" => $expiresAt,
-        "features" => [Constants::FEATURES["CLEAN_WEB"]]
+        "features" => [Constants::FEATURE["CLEAN_WEB"]]
       ],
       $this->privateKey
     );

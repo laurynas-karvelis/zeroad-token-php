@@ -25,7 +25,7 @@ class ClientHeaderTest extends TestCase
   public function testEncodeDecodeClientHeader()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]];
+    $features = [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]];
 
     $headerValue = ClientHeader::encodeClientHeader(
       [
@@ -47,7 +47,7 @@ class ClientHeaderTest extends TestCase
   public function testParseClientTokenWithCleanWeb()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["CLEAN_WEB"]];
+    $features = [Constants::FEATURE["CLEAN_WEB"]];
     $headerValue = ClientHeader::encodeClientHeader(
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
@@ -78,7 +78,7 @@ class ClientHeaderTest extends TestCase
   public function testParseClientTokenWithOnePass()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["ONE_PASS"]];
+    $features = [Constants::FEATURE["ONE_PASS"]];
     $headerValue = ClientHeader::encodeClientHeader(
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
@@ -109,7 +109,7 @@ class ClientHeaderTest extends TestCase
   public function testParseClientTokenWithOnePassWhenSiteHasCleanWebFeature()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["ONE_PASS"]];
+    $features = [Constants::FEATURE["ONE_PASS"]];
     $headerValue = ClientHeader::encodeClientHeader(
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
@@ -122,7 +122,7 @@ class ClientHeaderTest extends TestCase
     $parsed = ClientHeader::parseClientToken($headerValue, [
       "clientId" => $this->clientId,
       "publicKey" => $this->publicKey,
-      "features" => [Constants::FEATURES["CLEAN_WEB"]]
+      "features" => [Constants::FEATURE["CLEAN_WEB"]]
     ]);
 
     $expected = [
@@ -140,7 +140,7 @@ class ClientHeaderTest extends TestCase
   public function testParseClientTokenWithCleanWebWhenSiteHasOnePassFeature()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["CLEAN_WEB"]];
+    $features = [Constants::FEATURE["CLEAN_WEB"]];
     $headerValue = ClientHeader::encodeClientHeader(
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
@@ -153,7 +153,7 @@ class ClientHeaderTest extends TestCase
     $parsed = ClientHeader::parseClientToken($headerValue, [
       "clientId" => $this->clientId,
       "publicKey" => $this->publicKey,
-      "features" => [Constants::FEATURES["ONE_PASS"]]
+      "features" => [Constants::FEATURE["ONE_PASS"]]
     ]);
 
     $expected = [
@@ -171,7 +171,7 @@ class ClientHeaderTest extends TestCase
   public function testParseClientTokenWithCleanWebWhenSiteHasCleanWebAndOnePassFeatures()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["CLEAN_WEB"]];
+    $features = [Constants::FEATURE["CLEAN_WEB"]];
     $headerValue = ClientHeader::encodeClientHeader(
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
@@ -184,7 +184,7 @@ class ClientHeaderTest extends TestCase
     $parsed = ClientHeader::parseClientToken($headerValue, [
       "clientId" => $this->clientId,
       "publicKey" => $this->publicKey,
-      "features" => [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]]
+      "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]]
     ]);
 
     $expected = [
@@ -202,7 +202,7 @@ class ClientHeaderTest extends TestCase
   public function testParseClientTokenWithAllFeaturesButSiteSupportsOnlyCleanWeb()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]];
+    $features = [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]];
     $headerValue = ClientHeader::encodeClientHeader(
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
@@ -215,7 +215,7 @@ class ClientHeaderTest extends TestCase
     $parsed = ClientHeader::parseClientToken($headerValue, [
       "clientId" => $this->clientId,
       "publicKey" => $this->publicKey,
-      "features" => [Constants::FEATURES["CLEAN_WEB"]]
+      "features" => [Constants::FEATURE["CLEAN_WEB"]]
     ]);
 
     $expected = [
@@ -233,7 +233,7 @@ class ClientHeaderTest extends TestCase
   public function testParseClientTokenWithTokenClientIdAndSiteClientIdDoNotMatch()
   {
     $expiresAt = new \DateTimeImmutable("+1 day");
-    $features = [Constants::FEATURES["CLEAN_WEB"]];
+    $features = [Constants::FEATURE["CLEAN_WEB"]];
     $headerValue = ClientHeader::encodeClientHeader(
       [
         "version" => Constants::CURRENT_PROTOCOL_VERSION,
@@ -247,7 +247,7 @@ class ClientHeaderTest extends TestCase
     $parsed = ClientHeader::parseClientToken($headerValue, [
       "clientId" => "different_client_id",
       "publicKey" => $this->publicKey,
-      "features" => [Constants::FEATURES["CLEAN_WEB"], Constants::FEATURES["ONE_PASS"]]
+      "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]]
     ]);
 
     $expected = [

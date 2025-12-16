@@ -17,7 +17,7 @@ class Constants
    * IMPORTANT: Requirements listed for each feature class MUST be fulfilled fully.
    * Failure to comply will result in the site getting banned from Zero Ad Network platform.
    */
-  public const FEATURES = [
+  public const FEATURE = [
     /**
      * Feature requirements:
      *  - Disable all advertisements on the page;
@@ -35,11 +35,11 @@ class Constants
     "ONE_PASS" => 1 << 1
   ];
 
-  public const SERVER_HEADERS = [
+  public const SERVER_HEADER = [
     "WELCOME" => "X-Better-Web-Welcome"
   ];
 
-  public const CLIENT_HEADERS = [
+  public const CLIENT_HEADER = [
     "HELLO" => "X-Better-Web-Hello"
   ];
 
