@@ -1,3 +1,4 @@
+<!-- cspell:words Lineup  downtown  tidbits topbar -->
 <!doctype html>
 <html lang="en">
   <head>

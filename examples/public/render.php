@@ -1,5 +1,6 @@
 <?php
 
+// cspell:words EXTR
 function render(string $template, array $data = []): string
 {
   if (!preg_match('/^[a-zA-Z0-9_-]+$/', $template)) {
