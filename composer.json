@@ -39,8 +39,11 @@
     "test": "./vendor/bin/phpunit --testdox --bootstrap vendor/autoload.php tests"
   },
   "require": {
-    "php": ">=7.2.0",
+    "php": "^7.2 || ^8.0",
     "ext-sodium": "*"
+  },
+  "suggest": {
+    "ext-apcu": "For improved caching performance using APCu"
   },
   "require-dev": {
     "phpunit/phpunit": "^8.5"

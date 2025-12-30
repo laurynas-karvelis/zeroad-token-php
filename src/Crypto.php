@@ -10,9 +10,12 @@ class Crypto
 {
   // cspell:words secretkey
   private static $keyCache = [];
+  private const MAX_CACHE_SIZE = 10;
 
   /**
    * Generate new Ed25519 keypair in DER format
+   *
+   * @return array Array with 'privateKey' and 'publicKey' in base64
    */
   public static function generateKeys(): array
   {
@@ -38,6 +41,10 @@ class Crypto
 
   /**
    * Sign binary data using Ed25519 private key (DER PKCS8)
+   *
+   * @param string $data Binary data to sign
+   * @param string $privateKeyBase64 Base64-encoded private key
+   * @return string Binary signature
    */
   public static function sign(string $data, string $privateKeyBase64): string
   {
@@ -47,6 +54,11 @@ class Crypto
 
   /**
    * Verify signature using Ed25519 public key (DER SPKI)
+   *
+   * @param string $data Binary data that was signed
+   * @param string $signature Binary signature
+   * @param string $publicKeyBase64 Base64-encoded public key
+   * @return bool True if signature is valid
    */
   public static function verify(string $data, string $signature, string $publicKeyBase64): bool
   {
@@ -56,6 +68,9 @@ class Crypto
 
   /**
    * Generate cryptographically secure random bytes
+   *
+   * @param int $size Number of bytes to generate
+   * @return string Random bytes
    */
   public static function nonce(int $size): string
   {
@@ -64,11 +79,17 @@ class Crypto
 
   /**
    * Import private key from DER PKCS8
+   *
+   * @param string $base64Der Base64-encoded DER key
+   * @return string Sodium-compatible private key
    */
-  private static function importPrivateKey(string $base64Der)
+  private static function importPrivateKey(string $base64Der): string
   {
-    if (isset(self::$keyCache[$base64Der])) {
-      return self::$keyCache[$base64Der];
+    // Use hash as cache key (shorter than full base64 string)
+    $cacheKey = hash("xxh3", $base64Der);
+
+    if (isset(self::$keyCache[$cacheKey])) {
+      return self::$keyCache[$cacheKey];
     }
 
     $der = base64_decode($base64Der, true);
@@ -81,17 +102,28 @@ class Crypto
     $keypair = sodium_crypto_sign_seed_keypair($seed);
     $pkey = sodium_crypto_sign_secretkey($keypair);
 
-    self::$keyCache[$base64Der] = $pkey;
+    // Limit cache size (prevent unbounded growth)
+    if (count(self::$keyCache) >= self::MAX_CACHE_SIZE) {
+      array_shift(self::$keyCache);
+    }
+
+    self::$keyCache[$cacheKey] = $pkey;
     return $pkey;
   }
 
   /**
    * Import public key from DER SPKI
+   *
+   * @param string $base64Der Base64-encoded DER key
+   * @return string Sodium-compatible public key
    */
-  private static function importPublicKey(string $base64Der)
+  private static function importPublicKey(string $base64Der): string
   {
-    if (isset(self::$keyCache[$base64Der])) {
-      return self::$keyCache[$base64Der];
+    // Use hash as cache key (shorter than full base64 string)
+    $cacheKey = hash("xxh3", $base64Der);
+
+    if (isset(self::$keyCache[$cacheKey])) {
+      return self::$keyCache[$cacheKey];
     }
 
     $der = base64_decode($base64Der, true);
@@ -102,7 +134,12 @@ class Crypto
     // Last 32 bytes = raw public key
     $pkey = substr($der, -SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES);
 
-    self::$keyCache[$base64Der] = $pkey;
+    // Limit cache size (prevent unbounded growth)
+    if (count(self::$keyCache) >= self::MAX_CACHE_SIZE) {
+      array_shift(self::$keyCache);
+    }
+
+    self::$keyCache[$cacheKey] = $pkey;
     return $pkey;
   }
 }

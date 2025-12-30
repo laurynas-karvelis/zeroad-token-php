@@ -12,6 +12,13 @@ class ServerHeader
 {
   const SEPARATOR = "^";
 
+  /**
+   * Encode server welcome header
+   *
+   * @param string $clientId Your site's client ID from Zero Ad Network
+   * @param array $features Array of feature flags (e.g., [Constants::FEATURE['CLEAN_WEB']])
+   * @return string Encoded header value
+   */
   public static function encodeServerHeader(string $clientId, array $features): string
   {
     if (empty($clientId)) {
@@ -32,7 +39,13 @@ class ServerHeader
     return implode(self::SEPARATOR, [$clientId, Constants::CURRENT_PROTOCOL_VERSION, Helpers::setFlags($features)]);
   }
 
-  public static function decodeServerHeader(?string $headerValue): ?array
+  /**
+   * Decode server welcome header
+   *
+   * @param string|null $headerValue Header value to decode
+   * @return array|null Decoded header data or null on failure
+   */
+  public static function decodeServerHeader($headerValue)
   {
     if (!$headerValue) {
       return null;
@@ -42,7 +55,10 @@ class ServerHeader
       $parts = explode(self::SEPARATOR, $headerValue);
       Helpers::assert(count($parts) === 3, "Invalid header value format");
 
-      [$clientId, $protocolVersion, $flags] = $parts;
+      $clientId = $parts[0];
+      $protocolVersion = $parts[1];
+      $flags = $parts[2];
+
       Helpers::assert(in_array((int) $protocolVersion, Constants::PROTOCOL_VERSION, true), "Invalid protocol version");
       Helpers::assert((string) (int) $flags === $flags, "Invalid flags number");
 

@@ -32,9 +32,20 @@ class Site
     $this->SERVER_HEADER_VALUE = ServerHeader::encodeServerHeader($params["clientId"], $params["features"]);
     $this->SERVER_HEADER_NAME = Constants::SERVER_HEADER["WELCOME"];
     $this->CLIENT_HEADER_NAME = "HTTP_" . strtoupper(str_replace("-", "_", Constants::CLIENT_HEADER["HELLO"]));
+
+    // Configure caching if provided
+    if (isset($params["cacheConfig"])) {
+      ClientHeader::configureCaching($params["cacheConfig"]);
+    }
   }
 
-  public function parseClientToken(?string $headerValue): array
+  /**
+   * Parse and verify client token from HTTP header
+   *
+   * @param string|null $headerValue The token header value
+   * @return array Token context with feature flags
+   */
+  public function parseClientToken($headerValue): array
   {
     return ClientHeader::parseClientToken($headerValue, [
       "clientId" => $this->clientId,

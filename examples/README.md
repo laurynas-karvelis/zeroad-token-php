@@ -1,37 +1,206 @@
-# PHP composer example
+# PHP Composer Example
 
-This small demo site shows how the `zeroad.network/token` PHP composer module works and how you can add it to your own project.
+This demo shows how to integrate the `zeroad.network/token` module with PHP using cryptographic token validation and conditional rendering.
 
-## Try it yourself
+## Features
 
-Follow these steps:
+- ✅ **Ed25519 signature verification** - Secure token validation using libsodium
+- ✅ **APCu token caching** - Optional performance boost (10x faster validation)
+- ✅ **Conditional rendering** - Ads, paywalls, and tracking based on subscription status
+- ✅ **Middleware pattern** - Clean separation of token parsing and routing
+- ✅ **Multiple routes** - Homepage, JSON API endpoint
 
-1. Install the dependencies:
-   ```shell
-   composer install
-   ```
-1. Start the demo site:
-   ```shell
-   composer start
-   ```
-1. Open the homepage: [http://localhost:8080](http://localhost:8080)
+## Quick Start
 
-   To view the raw `tokenContext` JSON output, open: [http://localhost:8080/token](http://localhost:8080/token).
+### 1. Install Dependencies
 
-If you do not have the Zero Ad Network browser extension installed and do not have an active subscription, the demo will show how an average visitor would experience the site: cookie prompts, marketing popups, fake trackers, ads, paywalls, and subscription requests.
+```shell
+composer install
+```
 
-## How to test with the browser extension
+### 2. Start the Server
 
-To test the demo without buying a subscription:
+```shell
+composer start
+```
 
-1. Click **Get browser extension** in the top navigation and install the extension for your browser.
-1. After installing, click **Get demo token**. This opens a Zero Ad Network developer page that should automatically sync a demo token to your extension. The demo token is valid for 7 days. Revisit the page to renew the token for another 7 days.
-1. Now reload the page.
+### 3. Open in Browser
 
-The demo token uses the **Freedom** subscription plan so you can see the full feature set when both the site and the user have matching features.
+- **Homepage**: [http://localhost:8080](http://localhost:8080)
+- **Token API**: [http://localhost:8080/token](http://localhost:8080/token) (JSON output)
 
-## Final notes
+## What You'll See
 
-This example should help you set up Zero Ad Network on your site.
+**Without Zero Ad Network subscription:**
 
-For questions, use the contact email listed on the site: [https://zeroad.network/terms](https://zeroad.network/terms)
+- Advertisement banners
+- Cookie consent dialogs
+- Marketing popups
+- Analytics tracking enabled
+- Paywalled content (preview only)
+- Subscription overlays
+
+**With Zero Ad Network subscription:**
+
+- Clean, ad-free experience
+- No cookie consent prompts
+- No marketing interruptions
+- Full access to paywalled content
+- Privacy-protected browsing (no tracking)
+
+## Testing with Demo Token
+
+To test without purchasing a subscription:
+
+1. **Get the Browser Extension**
+   - Click "Get browser extension" in the navigation
+   - Install for Chrome, Firefox, or Edge
+
+2. **Get Demo Token**
+   - Click "Get demo token" after installing
+   - This opens the Zero Ad Network developer page
+   - Demo token syncs automatically to your extension
+   - Valid for 7 days (revisit to renew)
+
+3. **Reload the Page**
+   - The demo uses the **Freedom** plan (all features enabled)
+   - You'll see the full ad-free, paywall-free experience
+
+## How It Works
+
+### Site Initialization
+
+```php
+use ZeroAd\Token\Site;
+use ZeroAd\Token\Constants;
+
+$site = new Site([
+  "clientId" => "DEMO-Z2CclA8oXIT1e0Qmq",
+  "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]]
+]);
+```
+
+### Middleware Pattern
+
+```php
+function tokenMiddleware(callable $handler): void
+{
+  global $site;
+
+  // Set Welcome Header
+  header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
+
+  // Parse token (validates signature, checks expiration)
+  $tokenContext = $site->parseClientToken($_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
+
+  // Pass context to handler
+  $handler($tokenContext);
+}
+```
+
+### Routing
+
+```php
+$uri = $_SERVER["REQUEST_URI"];
+
+if ($uri === "/") {
+  tokenMiddleware(function ($tokenContext) {
+    echo render("homepage", ["tokenContext" => $tokenContext]);
+  });
+}
+```
+
+### Template Usage
+
+```php
+<?php if (!$tokenContext["HIDE_ADVERTISEMENTS"]): ?>
+    <div class="ad-banner">Advertisement</div>
+<?php endif; ?>
+
+<?php if ($tokenContext["DISABLE_CONTENT_PAYWALL"]): ?>
+    <article>Premium Content</article>
+<?php else: ?>
+    <div class="paywall">Subscribe to read</div>
+<?php endif; ?>
+```
+
+## Token Context
+
+The `tokenContext` array contains these boolean flags:
+
+```php
+[
+  "HIDE_ADVERTISEMENTS" => bool, // Hide all ads
+  "HIDE_COOKIE_CONSENT_SCREEN" => bool, // Hide cookie dialogs
+  "HIDE_MARKETING_DIALOGS" => bool, // Hide popups/newsletters
+  "DISABLE_NON_FUNCTIONAL_TRACKING" => bool, // Opt out of analytics
+  "DISABLE_CONTENT_PAYWALL" => bool, // Remove article paywalls
+  "ENABLE_SUBSCRIPTION_ACCESS" => bool // Grant premium features
+];
+```
+
+All flags are `false` for:
+
+- Users without subscriptions
+- Expired tokens
+- Invalid/forged tokens
+- Client ID mismatch (developer tokens)
+
+## Performance & Caching
+
+### Without APCu
+
+- **~2ms** per token validation (Ed25519 signature verification)
+- Crypto operations happen on every request
+- Suitable for low-traffic sites (<100 req/sec)
+
+### With APCu (Recommended)
+
+Enable APCu caching for 10x performance improvement:
+
+```php
+$site = new Site([
+  "clientId" => "YOUR_CLIENT_ID",
+  "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]],
+  "cacheConfig" => [
+    "ttl" => 5, // Cache for 5 seconds
+    "prefix" => "zeroad:" // Cache key prefix
+  ]
+]);
+```
+
+**Performance with APCu:**
+
+- **~0.2ms** per cached token (cache hit)
+- **~2ms** for first validation (cache miss)
+- Shared across PHP-FPM workers
+- Respects token expiration
+- Suitable for high-traffic sites (1000+ req/sec)
+
+**Install APCu:**
+
+```shell
+# Ubuntu/Debian
+sudo apt-get install php-apcu
+
+# Via PECL
+pecl install apcu
+```
+
+**Verify APCu is enabled:**
+
+```shell
+php -m | grep apcu
+```
+
+## Routes
+
+- `GET /` - Homepage with conditional ads and features
+- `GET /token` - JSON API endpoint showing parsed token context
+
+## Learn More
+
+- **Documentation**: [https://docs.zeroad.network](https://docs.zeroad.network)
+- **Integration Guide**: [https://docs.zeroad.network/site-integration](https://docs.zeroad.network/site-integration)
+- **Register Your Site**: [https://zeroad.network](https://zeroad.network)
+- **Contact**: [hello@zeroad.network](mailto:hello@zeroad.network)

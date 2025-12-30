@@ -10,8 +10,11 @@
     "process-timeout": 0
   },
   "require": {
-    "php": ">=7.2.0",
+    "php": "^7.2 || ^8.0",
     "ext-sodium": "*",
-    "zeroad.network/token": "^0.13.12"
+    "zeroad.network/token": "^0.14.0"
+  },
+  "suggest": {
+    "ext-apcu": "For improved caching performance using APCu"
   }
 }
