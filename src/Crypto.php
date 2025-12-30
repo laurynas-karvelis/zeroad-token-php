@@ -13,6 +13,29 @@ class Crypto
   private const MAX_CACHE_SIZE = 10;
 
   /**
+   * Fast hash function compatible with PHP 7.2+
+   * Uses xxh3 on PHP 8.1+, falls back to xxh64 or sha256
+   *
+   * @param string $data Data to hash
+   * @return string Hash string
+   */
+  private static function fastHash(string $data): string
+  {
+    // PHP 8.1+ has xxh3 (fastest)
+    if (PHP_VERSION_ID >= 80100 && in_array("xxh3", hash_algos(), true)) {
+      return hash("xxh3", $data);
+    }
+
+    // PHP 8.1+ also has xxh128 as alternative
+    if (PHP_VERSION_ID >= 80100 && in_array("xxh128", hash_algos(), true)) {
+      return hash("xxh128", $data);
+    }
+
+    // Fallback to md5 for PHP 7.2-8.0 (fast and sufficient for cache keys)
+    return md5($data);
+  }
+
+  /**
    * Generate new Ed25519 keypair in DER format
    *
    * @return array Array with 'privateKey' and 'publicKey' in base64
@@ -86,7 +109,7 @@ class Crypto
   private static function importPrivateKey(string $base64Der): string
   {
     // Use hash as cache key (shorter than full base64 string)
-    $cacheKey = hash("xxh3", $base64Der);
+    $cacheKey = self::fastHash($base64Der);
 
     if (isset(self::$keyCache[$cacheKey])) {
       return self::$keyCache[$cacheKey];
@@ -120,7 +143,7 @@ class Crypto
   private static function importPublicKey(string $base64Der): string
   {
     // Use hash as cache key (shorter than full base64 string)
-    $cacheKey = hash("xxh3", $base64Der);
+    $cacheKey = self::fastHash($base64Der);
 
     if (isset(self::$keyCache[$cacheKey])) {
       return self::$keyCache[$cacheKey];
