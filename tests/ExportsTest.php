@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+use ZeroAd\Token\ApcuResultCache;
 use ZeroAd\Token\Base64;
 use ZeroAd\Token\Constants;
 use ZeroAd\Token\Ed25519;
@@ -25,6 +26,7 @@ class ExportsTest extends TestCase
     public function testShipsEveryPublicClass(): void
     {
         foreach ([
+            ApcuResultCache::class,
             Base64::class,
             Constants::class,
             Ed25519::class,

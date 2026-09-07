@@ -66,7 +66,7 @@ When you serve more than one hostname, pass the request's host as the second arg
 | `hostnames`             | yes      | -            | `string\|array`. Whitelist; an apex covers its `www`. Scheme, port and path are stripped. |
 | `publicKey`             | no       | platform key | Staging and tests only.                                            |
 | `clockToleranceSeconds` | no       | `60`         |                                                                    |
-| `cache`                 | no       | on           | `false`, or an array overriding `enabled` / `ttl` / `maxSize`.     |
+| `cache`                 | no       | on           | `false`, or an array overriding `enabled` / `ttl` / `maxSize` / `store` / `prefix`. `store` is `"memory"` (default), `"apcu"` (shared across the FPM pool), or `"auto"`. |
 
 `Publisher` (public properties and methods)
 

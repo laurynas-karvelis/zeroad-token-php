@@ -61,7 +61,7 @@ class Publisher
     /** @var int */
     private $clockToleranceSeconds;
 
-    /** @var ResultCache */
+    /** @var ResultCache|ApcuResultCache */
     private $cache;
 
     /** @param array<string,mixed> $options See `create()`. */
@@ -116,7 +116,7 @@ class Publisher
         }
         $this->clockToleranceSeconds = (int) $clockTolerance;
 
-        $this->cache = new ResultCache(self::resolveCacheOptions($options["cache"] ?? true));
+        $this->cache = self::buildCache($options["cache"] ?? true);
 
         $this->headerName = Constants::PUBLISHER_HEADER;
         $this->header = [Constants::PUBLISHER_HEADER, $this->headerValue];
@@ -134,6 +134,11 @@ class Publisher
      *   - `publicKey` (string, optional) - override the platform key. Staging and tests only.
      *   - `clockToleranceSeconds` (int, optional) - slack on expiry. Default 60.
      *   - `cache` (bool|array, optional) - `false` disables it; an array overrides parts. Default on.
+     *     A `store` key picks where verdicts live: `"memory"` (default, per-process), `"apcu"` (shared
+     *     across the PHP-FPM pool, so a verdict survives the request), or `"auto"` (APCu when the
+     *     extension is available, memory otherwise). `"apcu"` falls back to memory, with a warning, when
+     *     APCu is not present. A `prefix` key namespaces the APCu keys so several sites can share one
+     *     segment.
      */
     public static function create(array $options): self
     {
@@ -218,20 +223,44 @@ class Publisher
     }
 
     /**
+     * Turns the `cache` option into a ready cache. `false` yields a disabled memory cache; `true` or an
+     * options array yields whichever backing store `store` selects, defaulting to per-process memory.
+     *
      * @param bool|array $cache
-     * @return array<string,mixed>
+     * @return ResultCache|ApcuResultCache
      */
-    private static function resolveCacheOptions($cache): array
+    private static function buildCache($cache)
     {
         if ($cache === false) {
-            return ["enabled" => false];
+            return new ResultCache(["enabled" => false]);
         }
-        if ($cache === true) {
-            return [];
+
+        $options = is_array($cache) ? $cache : [];
+
+        $store = $options["store"] ?? "memory";
+        unset($options["store"]);
+
+        if ($store === "memory") {
+            return new ResultCache($options);
         }
-        if (is_array($cache)) {
-            return $cache;
+
+        if ($store !== "apcu" && $store !== "auto") {
+            throw new \InvalidArgumentException('Cache `store` must be one of "memory", "apcu", "auto"');
         }
-        return [];
+
+        if (ApcuResultCache::isSupported()) {
+            return new ApcuResultCache($options);
+        }
+
+        // "apcu" was asked for explicitly, so the fallback is worth a line in the log; "auto" chose it
+        // knowing memory was a possibility, so it stays quiet.
+        if ($store === "apcu") {
+            error_log(
+                "[zeroad-token] APCu cache requested but the apcu extension is not available; falling "
+                . "back to a per-process memory cache."
+            );
+        }
+
+        return new ResultCache($options);
     }
 }

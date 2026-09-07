@@ -198,6 +198,23 @@ class CacheTest extends TestCase
         $this->build(["cache" => ["maxSize" => 0]]);
     }
 
+    public function testRejectsAnUnknownCacheStore(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches("/store/");
+        $this->build(["cache" => ["store" => "redis"]]);
+    }
+
+    public function testMemoryStoreIsTheDefault(): void
+    {
+        $publisher = $this->build();
+        $token = $this->authority->mintToken(self::HOSTNAME);
+
+        $publisher->verify($token);
+        // The memory store reports a live size; APCu never would through this path
+        $this->assertSame(1, $publisher->cacheStats()["size"]);
+    }
+
     // --- result cache internals --------------------------------------------
 
     private function good(): array

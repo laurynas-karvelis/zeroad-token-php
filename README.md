@@ -181,11 +181,13 @@ Publisher::create([
 ]);
 ```
 
-| Option    | Default  |                                        |
-| :-------- | :------- | :------------------------------------- |
-| `enabled` | `true`   |                                        |
-| `ttl`     | `600000` | milliseconds a verdict is trusted      |
-| `maxSize` | `1000`   | entries                                |
+| Option    | Default    |                                                                       |
+| :-------- | :--------- | :-------------------------------------------------------------------- |
+| `enabled` | `true`     |                                                                       |
+| `ttl`     | `600000`   | milliseconds a verdict is trusted                                     |
+| `maxSize` | `1000`     | entries (memory store only; APCu manages its own memory)             |
+| `store`   | `"memory"` | `"memory"`, `"apcu"`, or `"auto"` - where verdicts live (see below)   |
+| `prefix`  | see below  | namespaces the APCu keys; ignored by the memory store                 |
 
 Three things it does that are worth knowing about:
 
@@ -200,9 +202,32 @@ rejection can never later become an acceptance.
 byte check. Caching those would save nothing and would hand anyone who can send a request an easy way to
 fill memory with distinct keys.
 
-The cache is per `Publisher` instance and lives for the life of the PHP process. Under PHP-FPM that means
-per worker - it is not shared across workers, which is exactly why the publisher is created once at
-startup and reused, never per request. Entries are evicted least-used-first, oldest breaking ties.
+The default **memory** store is per `Publisher` instance and lives for the life of the PHP process.
+Under PHP-FPM that means per worker - it is not shared across workers, which is exactly why the
+publisher is created once at startup and reused, never per request. Entries are evicted
+least-used-first, oldest breaking ties.
+
+### Sharing verdicts across requests with APCu
+
+On a classic PHP stack a fresh process handles each request, so the memory store starts empty every
+time and a returning visitor's identical token is re-verified from scratch. Point `store` at APCu and the
+verdict computed by one request is there for the next, across the whole FPM pool:
+
+```php
+Publisher::create([
+    "publisherId" => "zapub_...",
+    "hostnames"   => "example.com",
+    "cache"       => ["store" => "apcu", "prefix" => "zeroad:token:"],
+]);
+```
+
+`"apcu"` requires the [APCu extension](https://www.php.net/manual/en/book.apcu.php); if it is not
+available the publisher logs a line and falls back to the memory store, so a token is still verified,
+just not shared. `"auto"` picks APCu when present and memory otherwise, silently - a good default for code
+that ships to hosts you do not control. The `prefix` namespaces the keys so several sites sharing one
+APCu segment do not collide, and `clearCache()` removes only keys under that prefix. With the APCu store,
+`cacheStats()` reports `evictions` as `0` (APCu evicts under its own memory pressure) and `maxSize` is
+advisory.
 
 ---
 
