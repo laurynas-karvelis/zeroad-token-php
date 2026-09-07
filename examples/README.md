@@ -1,14 +1,15 @@
 # PHP Composer Example
 
-This demo shows how to integrate the `zeroad.network/token` module with PHP using cryptographic token validation and conditional rendering.
+This demo shows how to integrate the `zeroad.network/token` module with PHP: verifying a signed,
+origin-bound subscriber token and rendering the page accordingly.
 
 ## Features
 
-- ✅ **Ed25519 signature verification** - Secure token validation using libsodium
-- ✅ **APCu token caching** - Optional performance boost (10x faster validation)
-- ✅ **Conditional rendering** - Ads, paywalls, and tracking based on subscription status
-- ✅ **Middleware pattern** - Clean separation of token parsing and routing
-- ✅ **Multiple routes** - Homepage, JSON API endpoint
+- ✅ **Two Ed25519 signatures** - a batch credential from the platform, bound to this site's hostname
+- ✅ **Per-process result cache** - a returning visitor's token is a map lookup, not fresh cryptography
+- ✅ **Conditional rendering** - ads, paywalls, cookie dialogs and marketing modals, all gated on one flag
+- ✅ **Middleware pattern** - clean separation of header/verification and routing
+- ✅ **Multiple routes** - homepage, JSON API endpoint
 
 ## Quick Start
 
@@ -31,176 +32,110 @@ composer start
 
 ## What You'll See
 
-**Without Zero Ad Network subscription:**
+**Without a Zero Ad Network subscription** (no extension, or not a subscriber):
 
 - Advertisement banners
-- Cookie consent dialogs
-- Marketing popups
-- Analytics tracking enabled
+- Cookie consent dialog
+- Marketing popup
+- Analytics tracking simulated
 - Paywalled content (preview only)
 - Subscription overlays
 
-**With Zero Ad Network subscription:**
+**With a subscription** (the extension attaches a valid token bound to this host):
 
 - Clean, ad-free experience
-- No cookie consent prompts
+- No cookie consent prompt
 - No marketing interruptions
 - Full access to paywalled content
-- Privacy-protected browsing (no tracking)
+- No tracking
 
-## Testing with Demo Token
+## Testing with the Demo Token
 
 To test without purchasing a subscription:
 
-1. **Get the Browser Extension**
-   - Click "Get browser extension" in the navigation
-   - Install for Chrome, Firefox, or Edge
+1. **Get the browser extension** - Chrome, Firefox, or Edge.
+2. **Get a demo token** from the Zero Ad Network developer page - it syncs to your extension
+   automatically and is valid for the **Freedom** plan.
+3. **Reload the page** - you'll see the full clean experience.
 
-2. **Get Demo Token**
-   - Click "Get demo token" after installing
-   - This opens the Zero Ad Network developer page
-   - Demo token syncs automatically to your extension
-   - Valid for 7 days (revisit to renew)
-
-3. **Reload the Page**
-   - The demo uses the **Freedom** plan (all features enabled)
-   - You'll see the full ad-free, paywall-free experience
+> The demo lists `localhost` and `127.0.0.1` as its hostnames, so a demo token bound to `localhost`
+> verifies here. In production, list the exact hosts you serve.
 
 ## How It Works
 
-### Site Initialization
+### Publisher initialization
 
 ```php
-use ZeroAd\Token\Site;
-use ZeroAd\Token\Constants;
+use ZeroAd\Token\Publisher;
 
-$site = new Site([
-  "clientId" => "DEMO-Z2CclA8oXIT1e0Qmq",
-  "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]]
+$publisher = Publisher::create([
+    "publisherId" => $_ENV["ZERO_AD_PUBLISHER_ID"],
+    "hostnames"   => ["localhost", "127.0.0.1"],
 ]);
 ```
 
-### Middleware Pattern
+### Middleware pattern
 
 ```php
 function tokenMiddleware(callable $handler): void
 {
-  global $site;
+    global $publisher;
 
-  // Set Welcome Header
-  header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
+    // Announce participation on every response
+    header("{$publisher->headerName}: {$publisher->headerValue}");
 
-  // Parse token (validates signature, checks expiration)
-  $tokenContext = $site->parseClientToken($_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
+    // Verify the token (validates two signatures, checks expiry and the hostname binding)
+    $visitor = $publisher->verify(
+        $_SERVER[$publisher->tokenHeaderServerKey] ?? null,
+        $_SERVER["HTTP_HOST"] ?? null
+    );
 
-  // Pass context to handler
-  $handler($tokenContext);
+    $handler($visitor);
 }
 ```
 
-### Routing
+### Template usage
+
+The Freedom plan grants everything, so a single `subscriber` flag drives the whole page:
 
 ```php
-$uri = $_SERVER["REQUEST_URI"];
-
-if ($uri === "/") {
-  tokenMiddleware(function ($tokenContext) {
-    echo render("homepage", ["tokenContext" => $tokenContext]);
-  });
-}
-```
-
-### Template Usage
-
-```php
-<?php if (!$tokenContext["HIDE_ADVERTISEMENTS"]): ?>
+<?php if (!$isSubscriber): ?>
     <div class="ad-banner">Advertisement</div>
 <?php endif; ?>
 
-<?php if ($tokenContext["DISABLE_CONTENT_PAYWALL"]): ?>
-    <article>Premium Content</article>
+<?php if ($isSubscriber): ?>
+    <article>Premium content</article>
 <?php else: ?>
     <div class="paywall">Subscribe to read</div>
 <?php endif; ?>
 ```
 
-## Token Context
+### The verification result
 
-The `tokenContext` array contains these boolean flags:
-
-```php
-[
-  "HIDE_ADVERTISEMENTS" => bool, // Hide all ads
-  "HIDE_COOKIE_CONSENT_SCREEN" => bool, // Hide cookie dialogs
-  "HIDE_MARKETING_DIALOGS" => bool, // Hide popups/newsletters
-  "DISABLE_NON_FUNCTIONAL_TRACKING" => bool, // Opt out of analytics
-  "DISABLE_CONTENT_PAYWALL" => bool, // Remove article paywalls
-  "ENABLE_SUBSCRIPTION_ACCESS" => bool // Grant premium features
-];
-```
-
-All flags are `false` for:
-
-- Users without subscriptions
-- Expired tokens
-- Invalid/forged tokens
-- Client ID mismatch (developer tokens)
-
-## Performance & Caching
-
-### Without APCu
-
-- **~2ms** per token validation (Ed25519 signature verification)
-- Crypto operations happen on every request
-- Suitable for low-traffic sites (<100 req/sec)
-
-### With APCu (Recommended)
-
-Enable APCu caching for 10x performance improvement:
+`$publisher->verify()` always returns a `VerificationResult`, never throws on bad input:
 
 ```php
-$site = new Site([
-  "clientId" => "YOUR_CLIENT_ID",
-  "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]],
-  "cacheConfig" => [
-    "ttl" => 5, // Cache for 5 seconds
-    "prefix" => "zeroad:" // Cache key prefix
-  ]
-]);
+$visitor->subscriber; // bool - the one flag the page branches on
+$visitor->plan;       // int|null  - Constants::PLAN["FREEDOM"] for a subscriber
+$visitor->planName;   // string|null - "Freedom"
+$visitor->expiresAt;  // \DateTimeImmutable|null
+$visitor->reason;     // string|null - a Rejection::* constant when not a subscriber
+$visitor->hostname;   // string - what it was verified against
+$visitor->cached;     // bool - whether cryptography was skipped
+
+$visitor->toArray();  // JSON-friendly copy (see the /token route)
 ```
 
-**Performance with APCu:**
-
-- **~0.2ms** per cached token (cache hit)
-- **~2ms** for first validation (cache miss)
-- Shared across PHP-FPM workers
-- Respects token expiration
-- Suitable for high-traffic sites (1000+ req/sec)
-
-**Install APCu:**
-
-```shell
-# Ubuntu/Debian
-sudo apt-get install php-apcu
-
-# Via PECL
-pecl install apcu
-```
-
-**Verify APCu is enabled:**
-
-```shell
-php -m | grep apcu
-```
+`subscriber` is `false` for visitors without the extension, expired tokens, forged tokens, and tokens
+bound to a different site.
 
 ## Routes
 
 - `GET /` - Homepage with conditional ads and features
-- `GET /token` - JSON API endpoint showing parsed token context
+- `GET /token` - JSON endpoint showing the parsed verification result
 
 ## Learn More
 
 - **Documentation**: [https://docs.zeroad.network](https://docs.zeroad.network)
-- **Integration Guide**: [https://docs.zeroad.network/site-integration](https://docs.zeroad.network/site-integration)
-- **Register Your Site**: [https://zeroad.network](https://zeroad.network)
+- **Register your site**: [https://zeroad.network](https://zeroad.network)
 - **Contact**: [hello@zeroad.network](mailto:hello@zeroad.network)

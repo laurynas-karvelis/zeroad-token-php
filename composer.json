@@ -10,7 +10,6 @@
     "token",
     "access-token",
     "http-header",
-    "welcome-header",
     "auth",
     "authorization",
     "subscription",
@@ -21,10 +20,11 @@
     "content-access",
     "middleware",
     "sodium",
+    "ed25519",
+    "publisher",
     "composer",
     "web-server",
-    "api",
-    "feature-flags"
+    "api"
   ],
   "homepage": "http://zeroad.network",
   "authors": [
@@ -57,6 +57,11 @@
   "autoload": {
     "psr-4": {
       "ZeroAd\\Token\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ZeroAd\\Token\\Tests\\": "tests/"
     }
   }
 }

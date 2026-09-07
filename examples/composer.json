@@ -12,7 +12,7 @@
   "require": {
     "php": "^7.2 || ^8.0",
     "ext-sodium": "*",
-    "zeroad.network/token": "^0.14.0"
+    "zeroad.network/token": "^1.0"
   },
   "suggest": {
     "ext-apcu": "For improved caching performance using APCu"

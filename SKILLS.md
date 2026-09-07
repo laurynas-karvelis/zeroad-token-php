@@ -1,472 +1,205 @@
-# zeroad.network/token (PHP) - Integration Skills
+# zeroad.network/token (PHP) - integration reference
 
-AI-agent-optimized reference for integrating `zeroad.network/token` into any PHP backend.
-Use this file as the primary source of truth when writing or reviewing integration code.
-
----
-
-## Decision tree: what do you need?
-
-```
-Integrating a publisher site?
-  -> Use the Site class (covers 99% of cases)
-  -> Go to: "Standard integration pattern"
-
-Need to inspect a Welcome header you received?
-  -> Use ServerHeader::decodeServerHeader()
-  -> Go to: "Decoding headers"
-
-Debugging why tokens are all-false?
-  -> Go to: "Troubleshooting"
-```
+Source of truth for writing or reviewing integration code against `zeroad.network/token` (PHP).
+The package verifies Zero Ad Network subscriber tokens in a publisher backend. It cannot issue them.
+It is the PHP port of `@zeroad.network/token`; same wire format, same behaviour.
 
 ---
 
-## Install
+## Decision tree
 
-```bash
-composer require zeroad.network/token
 ```
+Adding Zero Ad Network to a site?
+  -> Publisher::create() + one middleware. That is the whole API. See "The pattern".
 
-**Requirements:**
-- PHP 7.2+ (or 8.0+)
-- `ext-sodium` - included by default since PHP 7.2
-- `ext-apcu` - optional but strongly recommended (10-20x faster token parsing)
+Every visitor comes back subscriber === false?
+  -> See "Troubleshooting", start with $visitor->reason.
+
+Told to make verification faster?
+  -> It is already cached per process. See "Caching". Do not hand-roll a second cache around it.
+
+Looking for a way to sign or mint a token?
+  -> Not here, by design. This package holds no private key.
+```
 
 ---
 
-## Standard integration pattern
+## The pattern
 
-This is the only pattern you need for publisher site integration.
-
-### Step 1 - create the site instance (once at startup)
+There is one. Deviating from it is almost always a mistake.
 
 ```php
-use ZeroAd\Token\Site;
-use ZeroAd\Token\Constants;
+use ZeroAd\Token\Publisher;
 
-// Create once, reuse across all requests.
-// clientId comes from the zeroad.network dashboard after registering the site.
-$site = new Site([
-    "clientId"    => $_ENV["ZERO_AD_CLIENT_ID"],
-    "features"    => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]],
-    "cacheConfig" => [
-        "ttl"    => 10,              // seconds - how long to cache a verified token result
-        "prefix" => "myapp:zeroad:"  // APCu key prefix - namespace it per app
-    ]
-]);
-```
-
-`$site` exposes three public properties set at construction time:
-
-| Property | Type | Value |
-|---|---|---|
-| `$site->SERVER_HEADER_NAME` | `string` | `"X-Better-Web-Welcome"` |
-| `$site->SERVER_HEADER_VALUE` | `string` | encoded welcome string, e.g. `"abc123^1^3"` |
-| `$site->CLIENT_HEADER_NAME` | `string` | `"HTTP_X_BETTER_WEB_HELLO"` - the `$_SERVER` key |
-
-`$site->parseClientToken(?string $value): array` - verifies and maps a token to boolean flags.
-
-### Step 2 - middleware (all frameworks follow same logic)
-
-Two things must happen on every request:
-1. Set `X-Better-Web-Welcome` on the **response** (tells the extension this site participates).
-2. Parse `X-Better-Web-Hello` from `$_SERVER` and pass the resulting `$tokenContext` to handlers.
-
-#### Plain PHP
-
-```php
-function tokenMiddleware(callable $handler): void
-{
-    global $site;
-    header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
-    $tokenContext = $site->parseClientToken($_SERVER[$site->CLIENT_HEADER_NAME] ?? null);
-    $handler($tokenContext);
-}
-
-// Usage:
-tokenMiddleware(function ($tokenContext) {
-    // render page using $tokenContext
-});
-```
-
-#### Laravel - middleware class
-
-```php
-namespace App\Http\Middleware;
-
-use Closure;
-use ZeroAd\Token\Site;
-use ZeroAd\Token\Constants;
-
-class ZeroAdNetwork
-{
-    private Site $site;
-
-    public function __construct()
-    {
-        $this->site = new Site([
-            "clientId" => config("zeroad.client_id"),
-            "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]],
-            "cacheConfig" => ["ttl" => 10]
-        ]);
-    }
-
-    public function handle($request, Closure $next)
-    {
-        header("{$this->site->SERVER_HEADER_NAME}: {$this->site->SERVER_HEADER_VALUE}");
-
-        $tokenContext = $this->site->parseClientToken(
-            $_SERVER[$this->site->CLIENT_HEADER_NAME] ?? null
-        );
-
-        $request->attributes->set("tokenContext", $tokenContext);
-
-        return $next($request);
-    }
-}
-
-// In a controller:
-public function index(Request $request)
-{
-    $tokenContext = $request->attributes->get("tokenContext");
-    return view("index", ["tokenContext" => $tokenContext]);
-}
-```
-
-#### Symfony - event listener
-
-```php
-namespace App\EventListener;
-
-use Symfony\Component\HttpKernel\Event\RequestEvent;
-use Symfony\Component\HttpKernel\Event\ResponseEvent;
-use ZeroAd\Token\Site;
-use ZeroAd\Token\Constants;
-
-class ZeroAdNetworkListener
-{
-    private Site $site;
-
-    public function __construct(string $clientId)
-    {
-        $this->site = new Site([
-            "clientId" => $clientId,
-            "features" => [Constants::FEATURE["CLEAN_WEB"]],
-            "cacheConfig" => ["ttl" => 10]
-        ]);
-    }
-
-    public function onKernelRequest(RequestEvent $event): void
-    {
-        $tokenContext = $this->site->parseClientToken(
-            $_SERVER[$this->site->CLIENT_HEADER_NAME] ?? null
-        );
-        $event->getRequest()->attributes->set("tokenContext", $tokenContext);
-    }
-
-    public function onKernelResponse(ResponseEvent $event): void
-    {
-        $event->getResponse()->headers->set(
-            $this->site->SERVER_HEADER_NAME,
-            $this->site->SERVER_HEADER_VALUE
-        );
-    }
-}
-```
-
-#### WordPress
-
-```php
-require_once __DIR__ . "/vendor/autoload.php";
-
-use ZeroAd\Token\Site;
-use ZeroAd\Token\Constants;
-
-$GLOBALS["zeroad_site"] = new Site([
-    "clientId" => get_option("zeroad_client_id"),
-    "features" => [Constants::FEATURE["CLEAN_WEB"], Constants::FEATURE["ONE_PASS"]],
-    "cacheConfig" => ["ttl" => 10]
+// Once, at startup. Never per request - it parses a key and owns the cache.
+$publisher = Publisher::create([
+    "publisherId" => $_ENV["ZERO_AD_PUBLISHER_ID"],
+    "hostnames"   => "example.com", // covers www.example.com too; pass an array for other hosts
 ]);
 
-add_action("send_headers", function () {
-    $site = $GLOBALS["zeroad_site"];
-    header("{$site->SERVER_HEADER_NAME}: {$site->SERVER_HEADER_VALUE}");
-});
+// Per request, in global middleware:
+//   1. announce participation on the response
+//   2. verify the token on the request
+header("{$publisher->headerName}: {$publisher->headerValue}");
+$visitor = $publisher->verify($_SERVER[$publisher->tokenHeaderServerKey] ?? null);
 
-add_action("init", function () {
-    $site = $GLOBALS["zeroad_site"];
-    $GLOBALS["zeroad_context"] = $site->parseClientToken(
-        $_SERVER[$site->CLIENT_HEADER_NAME] ?? null
-    );
-});
-```
-
-### Step 3 - use $tokenContext in templates and handlers
-
-`parseClientToken()` always returns an array - never throws. All flags are `false` when the visitor is not a subscriber or has an invalid/expired token.
-
-```php
-// Shape of $tokenContext:
-[
-    // Enabled when subscriber has CLEAN_WEB AND site declared Constants::FEATURE["CLEAN_WEB"]
-    "HIDE_ADVERTISEMENTS"           => bool,
-    "HIDE_COOKIE_CONSENT_SCREEN"    => bool,
-    "HIDE_MARKETING_DIALOGS"        => bool,
-    "DISABLE_NON_FUNCTIONAL_TRACKING" => bool,
-
-    // Enabled when subscriber has ONE_PASS AND site declared Constants::FEATURE["ONE_PASS"]
-    "DISABLE_CONTENT_PAYWALL"       => bool,
-    "ENABLE_SUBSCRIPTION_ACCESS"    => bool,
-]
-```
-
-**Critical rule:** a flag is `true` only when BOTH conditions hold:
-- the subscriber's signed token grants that feature
-- the site instance was created with the matching `Constants::FEATURE` value
-
-**Usage pattern - guard an API endpoint:**
-
-```php
-if (!$tokenContext["ENABLE_SUBSCRIPTION_ACCESS"]) {
-    http_response_code(403);
-    echo json_encode(["error" => "Subscription required"]);
-    exit;
+if ($visitor->subscriber) {
+    // suppress ads, trackers, consent dialogs, marketing modals; unlock paywalled content
 }
 ```
 
-**Usage pattern - PHP template:**
+`$publisher->tokenHeaderServerKey` is `"HTTP_BETTER_WEB_TOKEN"` - the key PHP puts the `Better-Web-Token`
+request header under in `$_SERVER`. Use it; do not hand-build the `$_SERVER` key.
 
-```php
-<?php if (!$tokenContext["HIDE_ADVERTISEMENTS"]): ?>
-    <div class="ad-banner"><!-- ad code --></div>
-<?php endif; ?>
-
-<?php if (!$tokenContext["HIDE_COOKIE_CONSENT_SCREEN"]): ?>
-    <div class="cookie-banner"><!-- cookie notice --></div>
-<?php endif; ?>
-
-<?php if (!$tokenContext["HIDE_MARKETING_DIALOGS"]): ?>
-    <div class="newsletter-popup"><!-- newsletter --></div>
-<?php endif; ?>
-
-<?php if (!$tokenContext["DISABLE_NON_FUNCTIONAL_TRACKING"]): ?>
-    <script>/* analytics code */</script>
-<?php endif; ?>
-
-<?php if ($tokenContext["DISABLE_CONTENT_PAYWALL"]): ?>
-    <div><?= $article["fullContent"] ?></div>
-<?php else: ?>
-    <div><?= $article["preview"] ?></div>
-    <a href="/subscribe">Subscribe to read more</a>
-<?php endif; ?>
-```
+When you serve more than one hostname, pass the request's host as the second argument
+(`$publisher->verify($token, $host)`) - a value outside the whitelist is rejected, never trusted.
 
 ---
 
-## Choosing features
+## API surface
 
-| Feature key | Constant | What it means for your site |
-|---|---|---|
-| `"CLEAN_WEB"` | `Constants::FEATURE["CLEAN_WEB"]` (= 1) | You will hide ads, cookie consent, marketing dialogs, and disable non-functional tracking |
-| `"ONE_PASS"` | `Constants::FEATURE["ONE_PASS"]` (= 2) | You will lift paywalls and grant base subscription access |
+`Publisher::create(array $options): Publisher`
 
-Pass one or both. Only declare features you actually implement - non-compliance results in platform ban.
+| Option                  | Required | Default      | Notes                                                              |
+| :---------------------- | :------- | :----------- | :----------------------------------------------------------------- |
+| `publisherId`           | yes      | -            | `zapub_` followed by exactly 24 alphanumerics. Throws otherwise.   |
+| `hostnames`             | yes      | -            | `string\|array`. Whitelist; an apex covers its `www`. Scheme, port and path are stripped. |
+| `publicKey`             | no       | platform key | Staging and tests only.                                            |
+| `clockToleranceSeconds` | no       | `60`         |                                                                    |
+| `cache`                 | no       | on           | `false`, or an array overriding `enabled` / `ttl` / `maxSize`.     |
 
-### Compliance checklist - you MUST do ALL of these for each declared feature
+`Publisher` (public properties and methods)
 
-**CLEAN_WEB - all four required:**
-- [ ] Disable all advertisements (banners, interstitials, native ads, etc.)
-- [ ] Disable all cookie consent screens (headers, footers, dialogs)
-- [ ] Fully opt out users from non-functional trackers (analytics, ad pixels)
-- [ ] Disable all marketing dialogs and popups (newsletters, promotions)
+| Member                                              | Type                                                 |
+| :-------------------------------------------------- | :--------------------------------------------------- |
+| `->headerName`, `->headerValue`                     | `string`                                             |
+| `->header`                                          | `[string, string]`                                   |
+| `->tokenHeaderName`, `->tokenHeaderNameLowercase`   | `string`                                             |
+| `->tokenHeaderServerKey`                            | `string` - `"HTTP_BETTER_WEB_TOKEN"`                 |
+| `->verify($token, $hostname = null)`                | `VerificationResult`                                 |
+| `->cacheStats()`                                    | `["size","maxSize","hits","misses","evictions"]`     |
+| `->clearCache()`                                    | `void`                                               |
+| `->publisherId`, `->hostnames`                      | echo of the resolved config                          |
 
-**ONE_PASS - both required:**
-- [ ] Provide free access to all content behind a paywall
-- [ ] Provide free access to the site's base subscription plan (if one exists)
+`VerificationResult` - one object, `subscriber` says which branch:
+
+```php
+// subscriber:
+$visitor->subscriber; // true
+$visitor->plan;       // int, e.g. Constants::PLAN["FREEDOM"]
+$visitor->planName;   // "Freedom"
+$visitor->expiresAt;  // \DateTimeImmutable
+$visitor->hostname;   // string
+$visitor->cached;     // bool
+
+// non-subscriber:
+$visitor->subscriber; // false
+$visitor->reason;     // Rejection::* string
+$visitor->hostname;   // string
+$visitor->cached;     // bool
+
+$visitor->toArray();  // JSON-friendly copy, expiresAt as a unix timestamp
+```
+
+`Rejection::*`: `MISSING`, `MALFORMED`, `UNSUPPORTED_VERSION`, `EXPIRED`, `UNKNOWN_HOSTNAME`,
+`WRONG_HOSTNAME`, `FORGED`.
+
+`Constants::PLAN` is `["FREEDOM" => 1]`. One plan exists. The field is a byte, so more can be added
+without a format change - treat an unrecognised plan as not entitled rather than as an error.
+
+`VersionWarning::suppress(bool $suppressed = true)` silences the error-log line emitted when a token
+arrives with a protocol version newer than this build understands (still rejected as
+`UNSUPPORTED_VERSION`). Call it once at startup only to quiet a staged rollout or version-feeding tests -
+never to paper over the real signal, which is that an upgrade is overdue.
 
 ---
 
-## Cache configuration
+## Rules
 
-Caching requires `ext-apcu`. Without it, every request runs a full ED25519 signature verification (~150 us). With it, cached requests take ~15 us (10-20x faster).
+**Do**
 
-```php
-// Configured via Site constructor cacheConfig key:
-$site = new Site([
-    "clientId"    => "...",
-    "features"    => [...],
-    "cacheConfig" => [
-        "ttl"    => 10,              // seconds (default: 5)
-        "prefix" => "myapp:zeroad:"  // APCu key prefix (default: "zeroad:token:")
-    ]
-]);
-```
+- Create the publisher once per process, at bootstrap (a container singleton, a global, a static).
+- Set `Better-Web-Publisher` on every response, including ones where no token arrived. It is how the
+  extension discovers the site takes part.
+- Pass the request's host to `verify()` when serving more than one hostname.
+- Listing an apex admits its `www` sibling and vice versa, so a site serving both needs only one in the
+  list. The signature is still checked against the exact host each request arrives on.
+- Log `WRONG_HOSTNAME` and `FORGED` counts. Both mean somebody is attacking, not misconfiguring.
 
-If APCu is not loaded or not enabled, a warning is logged and caching is silently disabled - the code still works, just slower.
+**Do not**
 
-Cache entries expire at `min(configTtl, tokenExpiresAt)` so they never outlive the token itself.
-
-Recommended TTL by traffic:
-
-| Traffic | TTL | Reason |
-|---|---|---|
-| > 1000 req/s | 10-30s | Maximize cache hits |
-| 100-1000 req/s | 5-10s | Balance freshness and performance |
-| < 100 req/s | 2-5s | Keep data fresh |
+- Do not call `Publisher::create()` inside a request handler.
+- Do not build your own cache around `verify()`. It caches successes and cryptographic failures already,
+  keyed by hostname and token, bounded, with successes never outliving the token.
+- Do not return `$visitor->reason` to the visitor in production. It tells an attacker which check failed.
+- Do not set `publicKey` in production.
+- Do not treat `verify()` as throwing. Junk input yields a non-subscriber result. It throws in exactly
+  one case: several hostnames configured and none passed to the call.
+- Do not gate anything on `expiresAt` yourself. It is already checked, with clock tolerance.
+- Do not access `$_SERVER["Better-Web-Token"]` directly - PHP normalises it to `HTTP_BETTER_WEB_TOKEN`;
+  use `$publisher->tokenHeaderServerKey`.
+- Do not look for a signing, issuing or key-generation method. There is none in the shipped package.
 
 ---
 
-## Logging
+## Caching
 
-```php
-use ZeroAd\Token\Logger;
+On by default: `["enabled" => true, "maxSize" => 1000, "ttl" => 600000]` (ttl in milliseconds).
 
-// Verbosity levels: "error" | "warn" | "info" | "debug"
-Logger::setLogLevel("debug");  // enable during development
+- Keyed by hostname **and** token, so one host cannot answer for another.
+- Successes and cryptographic failures (`FORGED`, `WRONG_HOSTNAME`) are both cached - each costs the same
+  to reach.
+- Cheap rejections (`MISSING`, `MALFORMED`, `EXPIRED`) are **not** cached. Caching them would let anyone
+  flood memory with distinct keys.
+- A cached success is trusted for `min(ttl, token.expiresAt)`.
+- Eviction is least-used-first, oldest breaking ties. Expired entries are swept every 128 writes.
+- The cache is per `Publisher` instance, in process memory. Under PHP-FPM that is per worker, not shared
+  across workers - which is exactly why the publisher is built once and reused, never per request.
 
-// Custom handler (route to your logger):
-Logger::setLogHandler(function (string $level, string $message): void {
-    error_log("[$level] $message");
-});
-
-// Silence all logs:
-Logger::setLogHandler(null);
-```
-
-Warnings are emitted when a token fails verification - useful for spotting malformed headers or missing APCu.
+Turn it off with `"cache" => false`; tune with `"cache" => ["ttl" => ..., "maxSize" => ...]`.
 
 ---
 
-## Decoding headers (inspection / testing)
+## Wire format
 
-These are lower-level static methods. Only use them when you need to inspect raw header values outside of the `Site` flow.
+174 bytes, 232 base64url characters, two Ed25519 signatures.
 
-```php
-use ZeroAd\Token\Headers\ServerHeader;
-use ZeroAd\Token\Headers\ClientHeader;
-use ZeroAd\Token\Constants;
-
-// Decode a Welcome header (e.g. read from a third-party site):
-$welcome = ServerHeader::decodeServerHeader("Z2CclA8oXIT1e0QmqTWF8w^1^3");
-// [
-//   "clientId" => "Z2CclA8oXIT1e0QmqTWF8w",
-//   "version"  => 1,
-//   "features" => ["CLEAN_WEB", "ONE_PASS"]
-// ]
-// Returns null for malformed values (logged as warning).
-
-// Decode + verify a client token:
-$decoded = ClientHeader::decodeClientHeader($rawValue, Constants::ZEROAD_NETWORK_PUBLIC_KEY);
-// [
-//   "version"   => int,
-//   "expiresAt" => DateTime,
-//   "flags"     => int,       // bitmask
-//   "clientId"  => string|null  // only present in developer tokens
-// ]
-// Returns null when signature invalid or format wrong (logged as warning).
+```
+  offset  size  field
+       0     1  version (1)
+       1     1  plan
+       2     4  expiresAt, u32 unix seconds, little-endian
+       6    32  ephemeralPublicKey
+      38    64  authoritySignature   over "better-web:credential:v1" || bytes[0..38)
+     102     8  nonce
+     110    64  hostnameSignature    over "better-web:hostname:v1"  || bytes[0..110) || hostname
 ```
 
----
+The authority signs the batch credential (bytes 0 to 37) at issuance, after checking the subscription is
+live. The extension holds the matching ephemeral private key and signs the hostname locally, the first
+time it meets a site. The hostname is not on the wire; the verifier rebuilds the signed message from the
+host it serves, so a token bound elsewhere fails the signature rather than a string comparison.
 
-## Complete API reference
-
-### Site class (`ZeroAd\Token\Site`)
-
-```php
-// Constructor - throws \InvalidArgumentException on invalid params
-public function __construct(array $params)
-// $params keys:
-//   "clientId"    (string, required)
-//   "features"    (array, required) - values from Constants::FEATURE
-//   "cacheConfig" (array, optional) - keys: "ttl" (int seconds), "prefix" (string)
-
-// Public properties (read-only after construction):
-public string $SERVER_HEADER_NAME   // "X-Better-Web-Welcome"
-public string $SERVER_HEADER_VALUE  // encoded welcome string
-public string $CLIENT_HEADER_NAME   // "HTTP_X_BETTER_WEB_HELLO" ($_SERVER key)
-
-// Parse and verify a token - always returns array, never throws
-public function parseClientToken(?string $headerValue): array
-```
-
-### Constants class (`ZeroAd\Token\Constants`)
-
-```php
-Constants::FEATURE["CLEAN_WEB"]  // int 1
-Constants::FEATURE["ONE_PASS"]   // int 2
-Constants::SERVER_HEADER["WELCOME"]  // "X-Better-Web-Welcome"
-Constants::CLIENT_HEADER["HELLO"]    // "X-Better-Web-Hello"
-Constants::ZEROAD_NETWORK_PUBLIC_KEY // base64 Ed25519 public key string
-```
-
-### Logger class (`ZeroAd\Token\Logger`)
-
-```php
-Logger::setLogLevel(string $level): void   // "error"|"warn"|"info"|"debug"
-Logger::setLogHandler(?callable $handler): void  // fn(string $level, string $message): void
-```
-
-### ServerHeader class (`ZeroAd\Token\Headers\ServerHeader`)
-
-```php
-ServerHeader::decodeServerHeader(?string $headerValue): ?array
-// Returns: ["clientId" => string, "version" => int, "features" => string[]] or null
-```
-
-### ClientHeader class (`ZeroAd\Token\Headers\ClientHeader`)
-
-```php
-ClientHeader::parseClientToken(?string $headerValue, array $options): array
-// $options: ["clientId" => string, "features" => int[], "publicKey" => string (optional)]
-
-ClientHeader::decodeClientHeader(?string $headerValue, string $publicKey): ?array
-// Returns: ["version" => int, "expiresAt" => DateTime, "flags" => int, "clientId" => ?string] or null
-
-ClientHeader::configureCaching(array $config): void
-// $config: ["ttl" => int, "prefix" => string]
-
-ClientHeader::emptyContext(): array
-// Returns the all-false context array
-```
+`tests/Fixtures/Authority.php` is the reference implementation of both signing steps, kept out of the
+shipped `src/`. It matches the TypeScript SDK's `authority.ts` byte for byte.
 
 ---
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| All `$tokenContext` flags are `false` | Token missing, expired, or invalid | Enable `Logger::setLogLevel("debug")` and check for warnings |
-| All flags `false` for a known subscriber | Site `features` array doesn't include the subscriber's plan feature | Add the relevant `Constants::FEATURE` value to the `features` array in the constructor |
-| `parseClientToken` slow | APCu not installed or disabled | Install `ext-apcu` and enable it in `php.ini`; pass `cacheConfig` |
-| APCu warning in logs | APCu not loaded when `cacheConfig` is passed | Install `ext-apcu` or remove `cacheConfig` (cache silently disabled) |
-| Welcome header not reaching extension | Header sent after output started | Call `header()` before any output; check for BOM or whitespace before `<?php` |
-| Token silently rejected | Header value exceeds 500 bytes | Tokens from the extension are always within limits; check for proxy/WAF truncation |
-
-**Enable debug logging to trace a single request:**
-
-```php
-use ZeroAd\Token\Logger;
-
-Logger::setLogLevel("debug");
-Logger::setLogHandler(function (string $level, string $message): void {
-    error_log("ZeroAd [$level]: $message");
-});
-
-$raw = $_SERVER[$site->CLIENT_HEADER_NAME] ?? null;
-error_log("raw token header: " . ($raw ?? "(missing)"));
-
-$ctx = $site->parseClientToken($raw);
-error_log("token context: " . json_encode($ctx));
-```
+| Symptom                          | Cause                                                                                  |
+| :------------------------------- | :------------------------------------------------------------------------------------- |
+| All `MISSING`                    | Normal - only subscribers send a token. Verify `Better-Web-Publisher` is on responses. |
+| All `FORGED`                     | A `publicKey` override left over from staging.                                         |
+| All `UNKNOWN_HOSTNAME`           | Host not in `hostnames`. Log `$visitor->hostname`; check the proxy.                    |
+| `WRONG_HOSTNAME` from real users | Rare - `www`/apex are folded. Suspect token replay, or a proxy rewriting `Host`.       |
+| `UNSUPPORTED_VERSION`            | Newer token format. Upgrade the package.                                               |
+| `EXPIRED` in bursts              | Server clock drift. Raise `clockToleranceSeconds`, then fix NTP.                       |
+| Throws "several hostnames"       | Multiple hosts configured, none passed to `verify()`.                                  |
+| Slower under load                | `cacheStats()`: working set outgrew `maxSize`, or the publisher is built per request.  |
 
 ---
 
-## What to avoid
+## Requirements
 
-- Do NOT call `new Site(...)` on every request - create once at startup (e.g. top of a bootstrap file or a service container singleton).
-- Do NOT access `$_SERVER["X-Better-Web-Hello"]` directly - PHP normalizes headers to `HTTP_X_BETTER_WEB_HELLO`; use `$site->CLIENT_HEADER_NAME` to get the correct key.
-- Do NOT ignore the compliance checklist - partial feature implementation causes platform ban.
-- Do NOT call `ClientHeader::decodeClientHeader()` directly when `$site->parseClientToken()` covers the use case - it skips caching and context building.
-- Do NOT skip setting the `X-Better-Web-Welcome` response header - without it the extension never sends tokens.
-- Do NOT pass `cacheConfig` without `ext-apcu` installed - caching will be silently disabled and a warning logged, but make sure APCu is actually available in production.
+PHP 7.2+ (or 8.0+), `ext-sodium` (bundled with PHP since 7.2). No other dependencies.

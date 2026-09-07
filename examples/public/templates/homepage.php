@@ -172,7 +172,7 @@
     </header>
 
     <!-- Top banner ad -->
-    <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+    <?php if (!$isSubscriber) { ?>
       <div class="container my-3">
         <div class="ad-block ad-rectangle text-center py-3">HEADER AD — 970x90 (placeholder)</div>
       </div>
@@ -195,7 +195,7 @@
             </div>
 
             <!-- Subscription Overlay -->
-            <?php if (empty($tokenContext["ENABLE_SUBSCRIPTION_ACCESS"])) { ?>
+            <?php if (!$isSubscriber) { ?>
               <div class="subscription-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-center"
                   style="background: rgba(255,255,255,0.95); backdrop-filter: blur(3px); z-index: 10; padding: 1rem;">
                 <p class="mb-2" style="font-weight: 600; font-size: 1.1rem;">Subscribe to Access</p>
@@ -220,7 +220,7 @@
                     lead story summary.
                   </p>
                 </div>
-                <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+                <?php if (!$isSubscriber) { ?>
                   <div class="d-flex gap-2">
                     <div class="ad-block flex-fill" style="min-height: 90px">INLINE AD (300x90)</div>
                     <div class="ad-block flex-fill" style="min-height: 90px">SPONSORED</div>
@@ -242,7 +242,7 @@
                 </div>
 
                 <!-- Paywall Overlay -->
-                <?php if (empty($tokenContext["DISABLE_CONTENT_PAYWALL"])) { ?>
+                <?php if (!$isSubscriber) { ?>
                   <div class="paywall-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-center" 
                       style="background: rgba(255,255,255,0.95); backdrop-filter: blur(3px); z-index: 10; padding: 1rem;">
                     <p class="mb-2" style="font-weight: 600; font-size: 1.1rem;">Subscribe to read</p>
@@ -283,7 +283,7 @@
               </article>
 
               <!-- Mid-page ad -->
-              <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+              <?php if (!$isSubscriber) { ?>
                 <div class="my-3">
                   <div class="ad-block text-center py-4">MID-PAGE AD — 300x250</div>
                 </div>
@@ -316,7 +316,7 @@
               </article>
 
               <!-- Inline wide ad -->
-              <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+              <?php if (!$isSubscriber) { ?>
                 <div class="my-3">
                   <div class="ad-block text-center py-4">INLINE WIDE AD — 728x90</div>
                 </div>
@@ -356,7 +356,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
                   </ol>
                 </div>
 
-                <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+                <?php if (!$isSubscriber) { ?>
                   <div class="article-card mb-3 ad-rectangle ad-block text-center">
                     SIDEBAR AD — 300x600 (placeholder)
                   </div>
@@ -391,7 +391,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
                   </div>
                 </div>
 
-                <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+                <?php if (!$isSubscriber) { ?>
                   <div class="article-card mb-3 ad-rectangle ad-block text-center">
                     SIDEBAR AD — 300x600 (placeholder)
                   </div>
@@ -475,7 +475,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
 
         <!-- Right column for wide ads / extra -->
         <aside class="col-lg-4 d-none d-lg-block">
-          <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+          <?php if (!$isSubscriber) { ?>
             <div class="article-card ad-rectangle ad-block mb-3">LARGE AD 300x600</div>
           <?php } ?>
 
@@ -488,7 +488,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
             </ul>
 
             <!-- Paywall Overlay -->
-            <?php if (empty($tokenContext["DISABLE_CONTENT_PAYWALL"])) { ?>
+            <?php if (!$isSubscriber) { ?>
               <div class="paywall-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center text-center" 
                   style="background: rgba(255,255,255,0.95); backdrop-filter: blur(3px); z-index: 10; padding: 1rem;">
                 <p class="mb-2" style="font-weight: 600; font-size: 1.1rem;">Subscribe to read</p>
@@ -498,7 +498,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
             <?php } ?>
           </div>
 
-          <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+          <?php if (!$isSubscriber) { ?>
             <div class="article-card mb-3">
               <h6 class="mb-2">Sponsored</h6>
               <p class="small">Sponsored content preview with a short description and a call to action.</p>
@@ -584,7 +584,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
             </table>
           </div>
 
-          <?php if (empty($tokenContext["HIDE_ADVERTISEMENTS"])) { ?>
+          <?php if (!$isSubscriber) { ?>
             <div class="article-card mb-3">
               <h6 class="mb-2">Sponsored</h6>
               <p class="small">Sponsored content preview with a short description and a call to action.</p>
@@ -616,7 +616,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
     </footer>
 
     <!-- Cookie consent overlay (blocks page until accept/reject) -->
-    <?php if (empty($tokenContext["HIDE_COOKIE_CONSENT_SCREEN"])) { ?>
+    <?php if (!$isSubscriber) { ?>
       <div id="cookie-overlay" aria-hidden="false">
         <div id="cookie-consent" role="dialog" aria-modal="true" aria-labelledby="cookie-title">
           <div class="d-flex align-items-start gap-3">
@@ -641,7 +641,7 @@ console.log("I'm collecting your sensitive data about you");</pre>
     <?php } ?>
 
     <!-- Bootstrap modal (offer) -->
-    <?php if (empty($tokenContext["HIDE_MARKETING_DIALOGS"])) { ?>
+    <?php if (!$isSubscriber) { ?>
       <div class="modal fade" id="offerModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
