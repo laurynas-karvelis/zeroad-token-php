@@ -382,6 +382,28 @@ if (($GLOBALS["zeroad_visitor"] ?? null) && $GLOBALS["zeroad_visitor"]->subscrib
 
 ---
 
+## Performance
+
+Measured on PHP 8.5, Apple Silicon, single core, libsodium 1.0.22, via `php benchmarks/verify.php`:
+
+|                               |                                                     |
+| :---------------------------- | :-------------------------------------------------- |
+| Cold verification, end to end | 88us, about 11,300/s                                |
+| Cached verdict                | 0.95us, about 1,050,000/s                           |
+| Malformed token               | about 1.3us, rejected on length before it is decoded |
+
+Verification is two Ed25519 checks through `ext-sodium` (`sodium_crypto_sign_verify_detached`), so the
+cold cost tracks libsodium and is in the same ballpark as the TypeScript SDK. At ~0.09ms it is already a
+rounding error next to a database query or a template render.
+
+The one thing worth knowing is PHP's process model. The default memory cache lives only for the request
+that filled it, so on a classic PHP-FPM stack the cached number above applies within a request, not
+across them - a returning visitor's identical token is re-verified cold on the next page load. Point the
+cache at APCu (`"cache" => ["store" => "apcu"]`, see [Caching](#caching)) to turn that repeat into a
+shared-memory lookup across the whole worker pool.
+
+---
+
 ## Troubleshooting
 
 **Every visitor comes back `MISSING`.** Expected - only subscribers send a token. Confirm the pipe works
