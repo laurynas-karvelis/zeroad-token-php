@@ -96,7 +96,7 @@ function tokenMiddleware(callable $handler): void
 
 ### Template usage
 
-The Freedom plan grants everything, so a single `subscriber` flag drives the whole page:
+This demo includes all its sample paid content with Freedom, so a single `subscriber` flag drives the page. A real site must also check whether the requested content belongs to its base subscription or custom included access level:
 
 ```php
 <?php if (!$isSubscriber): ?>

@@ -19,7 +19,7 @@ namespace ZeroAd\Token;
  * $visitor = $publisher->verify($_SERVER[$publisher->tokenHeaderServerKey] ?? null);
  *
  * if ($visitor->subscriber) {
- *     // no ads, no trackers, no consent dialog, no paywall
+ *     // Remove ads and interruptions; grant your included content access.
  * }
  * ```
  */

@@ -45,8 +45,7 @@ $uri = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 
 if ($uri === "/") {
     tokenMiddleware(function ($visitor) {
-        // A single subscriber flag drives the whole page: the Freedom plan means no ads, no trackers,
-        // no cookie dialog, no paywall.
+        // This demo includes all sample content with Freedom and removes ads and interruptions.
         echo render("homepage", ["isSubscriber" => $visitor->subscriber]);
     });
 } elseif ($uri === "/token") {
