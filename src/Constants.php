@@ -47,7 +47,7 @@ class Constants
 
     /**
      * Subscription plans. Only `FREEDOM` exists today - it entitles the visitor to an ad-free,
-     * tracker-free, consent-dialog-free page and to any content the site keeps behind a paywall.
+     * tracker-free, consent-dialog-free page and the publisher’s base subscription or custom included access level.
      *
      * The plan travels as a single byte, so 254 more can be added without a format change. Treat an
      * unrecognised plan as "not entitled" rather than as an error.

@@ -16,8 +16,14 @@ It speaks the exact same wire format, so a token minted by the platform verifies
 
 Zero Ad Network subscribers pay a monthly fee and install a browser extension. When one of them visits
 your site, the extension attaches a cryptographically signed token. You verify it locally, and if it
-checks out you owe that visitor a clean page - no ads, no trackers, no cookie dialog, no paywall. Your
-share of their subscription is paid out monthly based on the time they actually spent with you.
+checks out, serve a clean page without ads, non-essential third-party trackers, cookie consent screens,
+or marketing popups, including newsletter signup prompts. If you sell access, grant your base subscription
+or a custom level that unlocks paid content or functionality. Higher tiers may remain restricted.
+Your share of their subscription is paid out monthly based on the time they actually spent with you.
+
+The SDK verifies membership; your application decides which content belongs to that included access level.
+A subscriber token does not grant site administration, prove a purchase, or replace private-content permissions.
+An already clean, unrestricted site only needs to announce its Publisher ID.
 
 Two headers, and this package handles both ends:
 
@@ -77,7 +83,7 @@ $visitor = $publisher->verify($_SERVER[$publisher->tokenHeaderServerKey] ?? null
 
 ```php
 if ($visitor->subscriber) {
-    // no ads, no trackers, no consent dialog, no paywall
+    // Remove ads and interruptions; grant your included content access.
 }
 ```
 
