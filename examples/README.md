@@ -1,12 +1,12 @@
 # PHP Composer Example
 
 This demo shows how to integrate the `zeroad.network/token` module with PHP: verifying a signed,
-origin-bound subscriber token and rendering the page accordingly.
+hostname-bound subscriber token and rendering the page accordingly.
 
 ## Features
 
 - ✅ **Two Ed25519 signatures** - a batch credential from the platform, bound to this site's hostname
-- ✅ **Per-process result cache** - a returning visitor's token is a map lookup, not fresh cryptography
+- ✅ **Instance result cache** - repeated checks on the same instance can reuse a verdict; cross-request PHP-FPM caching requires APCu
 - ✅ **Conditional rendering** - ads, paywalls, cookie dialogs and marketing modals, all gated on one flag
 - ✅ **Middleware pattern** - clean separation of header/verification and routing
 - ✅ **Multiple routes** - homepage, JSON API endpoint
@@ -14,6 +14,10 @@ origin-bound subscriber token and rendering the page accordingly.
 ## Quick Start
 
 ### 1. Install Dependencies
+
+The example requires the `Publisher` API. Its Composer manifest currently requests `^1.0`; confirm a
+compatible release is available or configure a local Composer path repository for this SDK checkout.
+The older `Site` API cannot run this example.
 
 ```shell
 composer install
@@ -47,19 +51,19 @@ composer start
 - No cookie consent prompt
 - No marketing interruptions
 - Full access to paywalled content
-- No tracking
+- No simulated third-party tracking scripts
 
-## Testing with the Demo Token
+## Testing access
 
-To test without purchasing a subscription:
+The public demo token is restricted to the official demo hostname and does not work on localhost.
+For your own integration, use your account’s Publisher ID, register and verify the hostname in your
+dashboard, then choose **Test in your browser**. Reload after test access reaches the extension.
+Publisher testing needs no paid subscription and earns nothing.
 
-1. **Get the browser extension** - Chrome, Firefox, or Edge.
-2. **Get a demo token** from the Zero Ad Network developer page - it syncs to your extension
-   automatically and is valid for the **Freedom** plan.
-3. **Reload the page** - you'll see the full clean experience.
-
-> The demo lists `localhost` and `127.0.0.1` as its hostnames, so a demo token bound to `localhost`
-> verifies here. In production, list the exact hosts you serve.
+The example allows `localhost` and `127.0.0.1`. Production extensions inject tokens only over HTTPS;
+HTTP localhost testing requires the development extension and matching local platform configuration.
+For a hosted test, update the example’s allowlist to your HTTPS hostname. Tokens are bound to the exact
+hostname, so `localhost` and `127.0.0.1` are not interchangeable.
 
 ## How It Works
 
@@ -112,7 +116,8 @@ This demo includes all its sample paid content with Freedom, so a single `subscr
 
 ### The verification result
 
-`$publisher->verify()` always returns a `VerificationResult`, never throws on bad input:
+`$publisher->verify()` returns a `VerificationResult` for missing or invalid tokens. With multiple
+configured hostnames, omitting the hostname throws a configuration error:
 
 ```php
 $visitor->subscriber; // bool - the one flag the page branches on
@@ -136,6 +141,6 @@ bound to a different site.
 
 ## Learn More
 
-- **Documentation**: [https://docs.zeroad.network](https://docs.zeroad.network)
-- **Register your site**: [https://zeroad.network](https://zeroad.network)
+- **Documentation**: [https://zeroad.network/docs](https://zeroad.network/docs)
+- **Get your Publisher ID**: [https://zeroad.network](https://zeroad.network)
 - **Contact**: [hello@zeroad.network](mailto:hello@zeroad.network)
