@@ -33,11 +33,11 @@ class Token
     public const PLAN_OFFSET = 1;
     public const EXPIRES_AT_OFFSET = 2;
     public const EPHEMERAL_PUBLIC_KEY_OFFSET = 6;
-    public const AUTHORITY_SIGNATURE_OFFSET = 38; // EPHEMERAL_PUBLIC_KEY_OFFSET + RAW_PUBLIC_KEY_BYTES(32)
-    public const NONCE_OFFSET = 102; // AUTHORITY_SIGNATURE_OFFSET + SIGNATURE_BYTES(64)
+    public const AUTHORITY_SIGNATURE_OFFSET = self::EPHEMERAL_PUBLIC_KEY_OFFSET + Ed25519::RAW_PUBLIC_KEY_BYTES;
+    public const NONCE_OFFSET = self::AUTHORITY_SIGNATURE_OFFSET + Ed25519::SIGNATURE_BYTES;
     public const NONCE_BYTES = 8;
-    public const HOSTNAME_SIGNATURE_OFFSET = 110; // NONCE_OFFSET + NONCE_BYTES
-    public const TOKEN_BYTES = 174; // HOSTNAME_SIGNATURE_OFFSET + SIGNATURE_BYTES(64)
+    public const HOSTNAME_SIGNATURE_OFFSET = self::NONCE_OFFSET + self::NONCE_BYTES;
+    public const TOKEN_BYTES = self::HOSTNAME_SIGNATURE_OFFSET + Ed25519::SIGNATURE_BYTES;
 
     /** Exact base64url length of a `TOKEN_BYTES` payload, unpadded: ceil(174 * 4 / 3). */
     public const TOKEN_CHARACTERS = 232;
@@ -84,7 +84,7 @@ class Token
 
         $plan = ord($bytes[self::PLAN_OFFSET]);
 
-        if (!in_array($plan, array_values(Constants::PLAN), true)) {
+        if (!in_array($plan, Constants::PLAN, true)) {
             return self::MALFORMED;
         }
 

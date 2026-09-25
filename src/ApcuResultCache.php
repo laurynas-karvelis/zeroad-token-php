@@ -23,12 +23,7 @@ namespace ZeroAd\Token;
  */
 class ApcuResultCache
 {
-    public const DEFAULT_OPTIONS = [
-        "enabled" => true,
-        "maxSize" => 1000,
-        "ttl" => 600000,
-        "prefix" => "zeroad:token:",
-    ];
+    public const DEFAULT_OPTIONS = CacheOptions::DEFAULTS + ["prefix" => "zeroad:token:"];
 
     /** @var bool */
     private $enabled;
@@ -54,15 +49,7 @@ class ApcuResultCache
     /** @param array<string,mixed> $overrides Any of `enabled`, `maxSize`, `ttl`, `prefix`. */
     public function __construct(array $overrides = [])
     {
-        $options = array_merge(self::DEFAULT_OPTIONS, $overrides);
-
-        if (!is_int($options["ttl"]) || $options["ttl"] < 0) {
-            throw new \InvalidArgumentException("Cache `ttl` must be an integer >= 0");
-        }
-
-        if (!is_int($options["maxSize"]) || $options["maxSize"] < 1) {
-            throw new \InvalidArgumentException("Cache `maxSize` must be an integer >= 1");
-        }
+        $options = CacheOptions::resolve(array_merge(self::DEFAULT_OPTIONS, $overrides));
 
         $this->enabled = (bool) $options["enabled"] && self::isSupported();
         $this->maxSize = $options["maxSize"];

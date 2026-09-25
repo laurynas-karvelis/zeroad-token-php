@@ -25,11 +25,7 @@ namespace ZeroAd\Token;
  */
 class ResultCache
 {
-    public const DEFAULT_OPTIONS = [
-        "enabled" => true,
-        "maxSize" => 1000,
-        "ttl" => 600000,
-    ];
+    public const DEFAULT_OPTIONS = CacheOptions::DEFAULTS;
 
     /** Entries are swept for expiry every N writes rather than on a timer, so an idle process stays idle. */
     private const SWEEP_INTERVAL = 128;
@@ -49,15 +45,7 @@ class ResultCache
     /** @param array<string,mixed> $overrides Any of `enabled`, `maxSize`, `ttl`. */
     public function __construct(array $overrides = [])
     {
-        $options = array_merge(self::DEFAULT_OPTIONS, $overrides);
-
-        if (!is_int($options["ttl"]) || $options["ttl"] < 0) {
-            throw new \InvalidArgumentException("Cache `ttl` must be an integer >= 0");
-        }
-
-        if (!is_int($options["maxSize"]) || $options["maxSize"] < 1) {
-            throw new \InvalidArgumentException("Cache `maxSize` must be an integer >= 1");
-        }
+        $options = CacheOptions::resolve($overrides);
 
         $this->enabled = (bool) $options["enabled"];
         $this->maxSize = $options["maxSize"];
@@ -74,13 +62,7 @@ class ResultCache
             return null;
         }
 
-        if (!isset($this->entries[$key])) {
-            $this->misses++;
-
-            return null;
-        }
-
-        if ($this->entries[$key]["goodUntil"] <= $now) {
+        if (!isset($this->entries[$key]) || $this->entries[$key]["goodUntil"] <= $now) {
             unset($this->entries[$key]);
             $this->misses++;
 

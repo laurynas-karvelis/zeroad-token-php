@@ -76,7 +76,7 @@ class Publisher
         $this->headerValue = PublisherHeader::encode($options["publisherId"]);
         $this->publisherId = $options["publisherId"];
 
-        $configured = isset($options["hostnames"]) ? $options["hostnames"] : [];
+        $configured = $options["hostnames"] ?? [];
 
         if (!is_array($configured)) {
             $configured = [$configured];
@@ -111,10 +111,10 @@ class Publisher
 
         $this->soleHostname = count($this->hostnames) === 1 ? $this->hostnames[0] : null;
 
-        $publicKey = isset($options["publicKey"]) ? $options["publicKey"] : Constants::AUTHORITY_PUBLIC_KEY;
+        $publicKey = $options["publicKey"] ?? Constants::AUTHORITY_PUBLIC_KEY;
         $this->authorityPublicKey = Ed25519::rawPublicKeyFromSpkiBase64($publicKey);
 
-        $clockTolerance = isset($options["clockToleranceSeconds"]) ? $options["clockToleranceSeconds"] : 60;
+        $clockTolerance = $options["clockToleranceSeconds"] ?? 60;
 
         if (!is_numeric($clockTolerance) || $clockTolerance < 0) {
             throw new \InvalidArgumentException("`clockToleranceSeconds` must be a number >= 0");
@@ -163,11 +163,9 @@ class Publisher
     public function verify($token, ?string $hostname = null): VerificationResult
     {
         // A repeated header arrives as an array; the first wins, since a second token is not a merge case
-        if (is_string($token)) {
-            $value = $token;
-        } elseif (is_array($token)) {
-            $value = isset($token[0]) && is_string($token[0]) ? $token[0] : null;
-        } else {
+        $value = is_array($token) ? ($token[0] ?? null) : $token;
+
+        if (!is_string($value)) {
             $value = null;
         }
 
