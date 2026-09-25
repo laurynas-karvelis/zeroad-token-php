@@ -4,11 +4,8 @@ Verify [Zero Ad Network](https://zeroad.network) subscriber tokens in your PHP b
 dependencies beyond `ext-sodium` and no calls back to us.
 
 ```bash
-composer require zeroad.network/token:^0.15.0
+composer require zeroad.network/token
 ```
-
-These examples require the `Publisher` API; the older 0.14.0 `Site` API is incompatible.
-If Composer cannot resolve this constraint, a compatible release must be published separately.
 
 This is the PHP port of [`@zeroad.network/token`](https://www.npmjs.com/package/@zeroad.network/token).
 It speaks the exact same wire format, so a token minted by the platform verifies identically on either.

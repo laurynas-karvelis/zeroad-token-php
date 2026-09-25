@@ -15,10 +15,6 @@ hostname-bound subscriber token and rendering the page accordingly.
 
 ### 1. Install Dependencies
 
-The example requires the `Publisher` API. Its Composer manifest currently requests `^1.0`; confirm a
-compatible release is available or configure a local Composer path repository for this SDK checkout.
-The older `Site` API cannot run this example.
-
 ```shell
 composer install
 ```
