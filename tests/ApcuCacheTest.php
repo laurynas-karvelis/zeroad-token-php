@@ -56,6 +56,7 @@ class ApcuCacheTest extends TestCase
     public function testMissesOnAnAbsentKey(): void
     {
         $cache = $this->cache();
+
         $this->assertNull($cache->get("nope", 0));
         $this->assertSame(1, $cache->stats()["misses"]);
     }
@@ -74,6 +75,7 @@ class ApcuCacheTest extends TestCase
         $expiresAt = 1000000;
 
         $cache->set("k", ["subscriber" => true, "plan" => 1, "expiresAt" => $expiresAt], 999000000);
+
         $this->assertNotNull($cache->get("k", 999500000));
         $this->assertNull($cache->get("k", $expiresAt * 1000 + 1));
     }
@@ -82,6 +84,7 @@ class ApcuCacheTest extends TestCase
     {
         $cache = $this->cache(["ttl" => 60000]);
         $cache->set("k", ["subscriber" => true, "plan" => 1, "expiresAt" => 500], 1000000);
+
         $this->assertSame(0, $cache->stats()["size"]);
     }
 
@@ -94,6 +97,7 @@ class ApcuCacheTest extends TestCase
 
         $found = false;
         apcu_fetch("someone-elses-key", $found);
+
         $this->assertTrue($found, "clear() must not touch keys outside the prefix");
         $this->assertNull($this->cache()->get("mine", 1));
 
@@ -113,6 +117,7 @@ class ApcuCacheTest extends TestCase
     {
         $cache = $this->cache(["enabled" => false]);
         $cache->set("a", $this->good(), 0);
+
         $this->assertNull($cache->get("a", 1));
     }
 
@@ -145,6 +150,7 @@ class ApcuCacheTest extends TestCase
         $token = $authority->mintToken(self::HOSTNAME);
 
         $publisher->verify($token);
+
         $this->assertTrue($publisher->verify($token)->cached);
     }
 }

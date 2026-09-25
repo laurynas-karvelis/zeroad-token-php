@@ -35,12 +35,15 @@ function measure(callable $work, int $iterations, int $warmup = 2000): array
     }
 
     $start = hrtime(true);
+
     for ($i = 0; $i < $iterations; $i++) {
         $work();
     }
+
     $elapsedNs = hrtime(true) - $start;
 
     $perCallUs = $elapsedNs / $iterations / 1000;
+
     return ["perCallUs" => $perCallUs, "opsPerSec" => 1_000_000 / $perCallUs];
 }
 

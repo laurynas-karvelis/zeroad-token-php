@@ -37,6 +37,7 @@ class PublisherTest extends TestCase
     public function testExposesTheResponseHeader(): void
     {
         $publisher = $this->build();
+
         $this->assertSame(Constants::PUBLISHER_HEADER, $publisher->headerName);
         $this->assertSame(self::PUBLISHER_ID, $publisher->headerValue);
         $this->assertSame([Constants::PUBLISHER_HEADER, self::PUBLISHER_ID], $publisher->header);
@@ -45,6 +46,7 @@ class PublisherTest extends TestCase
     public function testExposesTheRequestHeaderNames(): void
     {
         $publisher = $this->build();
+
         $this->assertSame(Constants::TOKEN_HEADER, $publisher->tokenHeaderName);
         $this->assertSame(Constants::TOKEN_HEADER_LOWERCASE, $publisher->tokenHeaderNameLowercase);
         $this->assertSame("HTTP_BETTER_WEB_TOKEN", $publisher->tokenHeaderServerKey);
@@ -53,6 +55,7 @@ class PublisherTest extends TestCase
     public function testCanonicalisesConfiguredHostnames(): void
     {
         $publisher = $this->build(["hostnames" => ["  Example.COM:8080 ", "https://www.example.com/blog"]]);
+
         $this->assertSame(["example.com", "www.example.com"], $publisher->hostnames);
     }
 
@@ -147,6 +150,7 @@ class PublisherTest extends TestCase
     {
         $publisher = $this->build(["hostnames" => "example.com"]);
         $result = $publisher->verify($this->authority->mintToken("www.example.com"), "www.example.com");
+
         $this->assertTrue($result->subscriber);
     }
 
@@ -154,6 +158,7 @@ class PublisherTest extends TestCase
     {
         $publisher = $this->build(["hostnames" => "www.example.com"]);
         $result = $publisher->verify($this->authority->mintToken("example.com"), "example.com");
+
         $this->assertTrue($result->subscriber);
     }
 
@@ -165,6 +170,7 @@ class PublisherTest extends TestCase
     public function testReportsMissing($token): void
     {
         $result = $this->build()->verify($token);
+
         $this->assertFalse($result->subscriber);
         $this->assertSame(Rejection::MISSING, $result->reason);
         $this->assertFalse($result->cached);
@@ -185,6 +191,7 @@ class PublisherTest extends TestCase
     public function testReportsMalformed(string $token): void
     {
         $result = $this->build()->verify($token);
+
         $this->assertFalse($result->subscriber);
         $this->assertSame(Rejection::MALFORMED, $result->reason);
     }
@@ -201,6 +208,7 @@ class PublisherTest extends TestCase
     public function testReportsAnUnknownPlanByteAsMalformed(): void
     {
         $token = $this->authority->mintToken(self::HOSTNAME, ["plan" => 99]);
+
         $this->assertSame(Rejection::MALFORMED, $this->build()->verify($token)->reason);
     }
 
@@ -208,6 +216,7 @@ class PublisherTest extends TestCase
     {
         VersionWarning::suppress();
         $token = $this->authority->mintToken(self::HOSTNAME, ["version" => 2]);
+
         $this->assertSame(Rejection::UNSUPPORTED_VERSION, $this->build()->verify($token)->reason);
         VersionWarning::suppress(false);
     }
@@ -215,6 +224,7 @@ class PublisherTest extends TestCase
     public function testRejectsAnExpiredToken(): void
     {
         $token = $this->authority->mintToken(self::HOSTNAME, ["expiresAt" => time() - 3600]);
+
         $this->assertSame(Rejection::EXPIRED, $this->build()->verify($token)->reason);
     }
 
@@ -233,6 +243,7 @@ class PublisherTest extends TestCase
     public function testRejectsAHostnameThisPublisherDoesNotServe(): void
     {
         $result = $this->build()->verify($this->authority->mintToken("other.example"), "other.example");
+
         $this->assertFalse($result->subscriber);
         $this->assertSame(Rejection::UNKNOWN_HOSTNAME, $result->reason);
         $this->assertSame("other.example", $result->hostname);
@@ -271,12 +282,14 @@ class PublisherTest extends TestCase
     {
         $impostor = Authority::create();
         $result = $this->build()->verify($impostor->mintToken(self::HOSTNAME));
+
         $this->assertSame(Rejection::FORGED, $result->reason);
     }
 
     public function testEditingThePlanInvalidatesTheAuthoritySignature(): void
     {
         $token = Authority::corruptAt($this->authority->mintToken(self::HOSTNAME), 1);
+
         $this->assertSame(Rejection::MALFORMED, $this->build()->verify($token)->reason);
     }
 

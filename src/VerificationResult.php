@@ -52,6 +52,7 @@ class VerificationResult
         $result->expiresAt = $expiresAt;
         $result->hostname = $hostname;
         $result->cached = $cached;
+
         return $result;
     }
 
@@ -62,6 +63,7 @@ class VerificationResult
         $result->reason = $reason;
         $result->hostname = $hostname;
         $result->cached = $cached;
+
         return $result;
     }
 

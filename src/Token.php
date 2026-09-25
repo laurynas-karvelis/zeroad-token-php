@@ -69,17 +69,21 @@ class Token
         }
 
         $bytes = Base64::fromBase64Url($token);
+
         if ($bytes === null || strlen($bytes) !== self::TOKEN_BYTES) {
             return self::MALFORMED;
         }
 
         $version = ord($bytes[self::VERSION_OFFSET]);
+
         if ($version !== Constants::PROTOCOL_VERSION) {
             VersionWarning::warnIfAhead($version);
+
             return self::UNSUPPORTED_VERSION;
         }
 
         $plan = ord($bytes[self::PLAN_OFFSET]);
+
         if (!in_array($plan, array_values(Constants::PLAN), true)) {
             return self::MALFORMED;
         }

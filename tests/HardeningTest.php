@@ -92,6 +92,7 @@ class HardeningTest extends TestCase
     {
         $bytes = $this->decode($this->authority->mintToken(self::HOSTNAME));
         $bytes = substr_replace($bytes, str_repeat("\0", 32), Token::EPHEMERAL_PUBLIC_KEY_OFFSET, 32);
+
         $this->assertFalse($this->build()->verify($this->encode($bytes))->subscriber);
     }
 
@@ -102,6 +103,7 @@ class HardeningTest extends TestCase
     {
         $bytes = $this->decode($this->authority->mintToken(self::HOSTNAME));
         $bytes = substr_replace($bytes, str_repeat("\0", Ed25519::SIGNATURE_BYTES), $from, Ed25519::SIGNATURE_BYTES);
+
         $this->assertFalse($this->build()->verify($this->encode($bytes))->subscriber);
     }
 
@@ -165,6 +167,7 @@ class HardeningTest extends TestCase
     {
         VersionWarning::suppress();
         $parsed = 0;
+
         for ($attempt = 0; $attempt < 5000; $attempt++) {
             if (is_array(Token::read($this->encode(random_bytes(Token::TOKEN_BYTES))))) {
                 $parsed++;

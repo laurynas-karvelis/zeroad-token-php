@@ -30,6 +30,7 @@ class Verify
         if ($parsed === Token::MALFORMED) {
             return ["subscriber" => false, "reason" => Rejection::MALFORMED];
         }
+
         if ($parsed === Token::UNSUPPORTED_VERSION) {
             return ["subscriber" => false, "reason" => Rejection::UNSUPPORTED_VERSION];
         }

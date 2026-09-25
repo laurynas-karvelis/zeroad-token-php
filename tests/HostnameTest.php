@@ -40,6 +40,7 @@ class HostnameTest extends TestCase
     {
         foreach (["https://Example.com:8080/x", "example.com.", "[::1]:1"] as $input) {
             $once = Hostname::canonical($input);
+
             $this->assertSame($once, Hostname::canonical($once));
         }
     }

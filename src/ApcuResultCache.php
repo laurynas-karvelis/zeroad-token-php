@@ -59,6 +59,7 @@ class ApcuResultCache
         if (!is_int($options["ttl"]) || $options["ttl"] < 0) {
             throw new \InvalidArgumentException("Cache `ttl` must be an integer >= 0");
         }
+
         if (!is_int($options["maxSize"]) || $options["maxSize"] < 1) {
             throw new \InvalidArgumentException("Cache `maxSize` must be an integer >= 1");
         }
@@ -84,6 +85,7 @@ class ApcuResultCache
 
         if (!$found || !is_array($entry) || !isset($entry["verdict"], $entry["goodUntil"])) {
             $this->misses++;
+
             return null;
         }
 
@@ -92,10 +94,12 @@ class ApcuResultCache
         if ($entry["goodUntil"] <= $now) {
             apcu_delete($this->prefix . $key);
             $this->misses++;
+
             return null;
         }
 
         $this->hits++;
+
         return $entry["verdict"];
     }
 

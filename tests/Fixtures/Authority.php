@@ -80,6 +80,7 @@ class Authority
     public static function bindToHostname(array $credential, string $hostname, array $options = []): string
     {
         $nonce = isset($options["nonce"]) ? $options["nonce"] : "\x01\x02\x03\x04\x05\x06\x07\x08";
+
         if (strlen($nonce) !== 8) {
             throw new \InvalidArgumentException("Nonce must be 8 bytes");
         }
@@ -103,6 +104,7 @@ class Authority
     {
         $bytes = sodium_base642bin($token, SODIUM_BASE64_VARIANT_URLSAFE_NO_PADDING);
         $bytes[$offset] = chr(ord($bytes[$offset]) ^ 0x01);
+
         return self::toBase64Url($bytes);
     }
 

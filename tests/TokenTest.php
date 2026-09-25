@@ -79,6 +79,7 @@ class TokenTest extends TestCase
     public function testRejectsAnUnknownPlanByte(): void
     {
         $authority = Authority::create();
+
         $this->assertSame(Token::MALFORMED, Token::read($authority->mintToken("example.com", ["plan" => 7])));
         $this->assertSame(Token::MALFORMED, Token::read($authority->mintToken("example.com", ["plan" => 0])));
     }
@@ -86,6 +87,7 @@ class TokenTest extends TestCase
     public function testSeparatesAFutureVersionFromGarbage(): void
     {
         \ZeroAd\Token\VersionWarning::suppress();
+
         $this->assertSame(
             Token::UNSUPPORTED_VERSION,
             Token::read(Authority::create()->mintToken("example.com", ["version" => 2]))
@@ -97,6 +99,7 @@ class TokenTest extends TestCase
     {
         $authority = Authority::create();
         $parsed = Token::read($authority->mintToken("example.com"));
+
         $this->assertIsArray($parsed);
 
         $message = Token::credentialMessage($parsed["bytes"]);
@@ -105,12 +108,14 @@ class TokenTest extends TestCase
         $this->assertTrue(
             Ed25519::verify($message, $signature, Ed25519::rawPublicKeyFromSpkiBase64($authority->publicKey))
         );
+
         $this->assertSame("better-web:credential:v1", substr($message, 0, 24));
     }
 
     public function testHostnameMessageChangesWithTheHostname(): void
     {
         $parsed = Token::read(Authority::create()->mintToken("example.com"));
+
         $this->assertIsArray($parsed);
 
         $forA = Token::hostnameMessage($parsed["bytes"], "a.example");

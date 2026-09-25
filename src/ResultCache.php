@@ -54,6 +54,7 @@ class ResultCache
         if (!is_int($options["ttl"]) || $options["ttl"] < 0) {
             throw new \InvalidArgumentException("Cache `ttl` must be an integer >= 0");
         }
+
         if (!is_int($options["maxSize"]) || $options["maxSize"] < 1) {
             throw new \InvalidArgumentException("Cache `maxSize` must be an integer >= 1");
         }
@@ -75,17 +76,20 @@ class ResultCache
 
         if (!isset($this->entries[$key])) {
             $this->misses++;
+
             return null;
         }
 
         if ($this->entries[$key]["goodUntil"] <= $now) {
             unset($this->entries[$key]);
             $this->misses++;
+
             return null;
         }
 
         $this->entries[$key]["hits"]++;
         $this->hits++;
+
         return $this->entries[$key]["verdict"];
     }
 
@@ -178,6 +182,7 @@ class ResultCache
         if ($candidate["hits"] !== $incumbent["hits"]) {
             return $candidate["hits"] < $incumbent["hits"];
         }
+
         return $candidate["storedAt"] < $incumbent["storedAt"];
     }
 }

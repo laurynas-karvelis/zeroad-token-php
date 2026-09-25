@@ -77,13 +77,16 @@ class Publisher
         $this->publisherId = $options["publisherId"];
 
         $configured = isset($options["hostnames"]) ? $options["hostnames"] : [];
+
         if (!is_array($configured)) {
             $configured = [$configured];
         }
 
         $this->hostnames = [];
+
         foreach ($configured as $hostname) {
             $canonical = Hostname::canonical((string) $hostname);
+
             if ($canonical !== "") {
                 $this->hostnames[] = $canonical;
             }
@@ -99,6 +102,7 @@ class Publisher
         // the apex and its `www` need list only one. Membership widens; the signature is still checked
         // against the exact host the request arrived on.
         $this->allowed = [];
+
         foreach ($this->hostnames as $hostname) {
             foreach (Hostname::wwwVariants($hostname) as $variant) {
                 $this->allowed[$variant] = true;
@@ -111,9 +115,11 @@ class Publisher
         $this->authorityPublicKey = Ed25519::rawPublicKeyFromSpkiBase64($publicKey);
 
         $clockTolerance = isset($options["clockToleranceSeconds"]) ? $options["clockToleranceSeconds"] : 60;
+
         if (!is_numeric($clockTolerance) || $clockTolerance < 0) {
             throw new \InvalidArgumentException("`clockToleranceSeconds` must be a number >= 0");
         }
+
         $this->clockToleranceSeconds = (int) $clockTolerance;
 
         $this->cache = self::buildCache($options["cache"] ?? true);
@@ -192,6 +198,7 @@ class Publisher
         $key = $target . " " . $value;
 
         $cached = $this->cache->get($key, $now);
+
         if ($cached !== null) {
             return Verify::toResult($cached, $target, true);
         }

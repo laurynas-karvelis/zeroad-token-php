@@ -43,6 +43,7 @@ class CacheTest extends TestCase
         $this->assertTrue($publisher->verify($token)->cached);
 
         $stats = $publisher->cacheStats();
+
         $this->assertSame(1, $stats["size"]);
         $this->assertSame(2, $stats["hits"]);
         $this->assertSame(1, $stats["misses"]);
@@ -72,6 +73,7 @@ class CacheTest extends TestCase
         $this->assertTrue($publisher->verify($token, "a.example")->subscriber);
 
         $atB = $publisher->verify($token, "b.example");
+
         $this->assertFalse($atB->subscriber);
         $this->assertSame(Rejection::WRONG_HOSTNAME, $atB->reason);
         $this->assertFalse($atB->cached);
@@ -83,14 +85,17 @@ class CacheTest extends TestCase
         $forged = Authority::create()->mintToken(self::HOSTNAME);
 
         $first = $publisher->verify($forged);
+
         $this->assertSame(Rejection::FORGED, $first->reason);
         $this->assertFalse($first->cached);
 
         $second = $publisher->verify($forged);
+
         $this->assertSame(Rejection::FORGED, $second->reason);
         $this->assertTrue($second->cached);
 
         $stats = $publisher->cacheStats();
+
         $this->assertSame(1, $stats["size"]);
         $this->assertSame(1, $stats["hits"]);
     }
@@ -102,6 +107,7 @@ class CacheTest extends TestCase
 
         $this->assertFalse($publisher->verify($harvested)->cached);
         $second = $publisher->verify($harvested);
+
         $this->assertSame(Rejection::WRONG_HOSTNAME, $second->reason);
         $this->assertTrue($second->cached);
     }
@@ -114,6 +120,7 @@ class CacheTest extends TestCase
         $publisher = $this->build();
         $publisher->verify($token);
         $publisher->verify($token);
+
         $this->assertSame(0, $publisher->cacheStats()["size"]);
     }
 
@@ -128,9 +135,11 @@ class CacheTest extends TestCase
     public function testAnOversizedHeaderIsDiscardedBeforeItCanBecomeACacheKey(): void
     {
         $publisher = $this->build();
+
         for ($index = 0; $index < 50; $index++) {
             $publisher->verify(str_repeat("z", 100000) . $index);
         }
+
         $this->assertSame(0, $publisher->cacheStats()["size"]);
     }
 
@@ -138,6 +147,7 @@ class CacheTest extends TestCase
     {
         $publisher = $this->build();
         $publisher->verify($this->authority->mintToken(self::HOSTNAME, ["expiresAt" => time() - 10]));
+
         $this->assertSame(0, $publisher->cacheStats()["size"]);
     }
 
@@ -159,6 +169,7 @@ class CacheTest extends TestCase
         $token = $this->authority->mintToken(self::HOSTNAME);
 
         $publisher->verify($token);
+
         $this->assertTrue($publisher->verify($token)->cached);
         $this->assertSame(ResultCache::DEFAULT_OPTIONS["maxSize"], $publisher->cacheStats()["maxSize"]);
     }
@@ -169,6 +180,7 @@ class CacheTest extends TestCase
         $token = $this->authority->mintToken(self::HOSTNAME);
 
         $publisher->verify($token);
+
         $this->assertFalse($publisher->verify($token)->cached);
     }
 
@@ -233,6 +245,7 @@ class CacheTest extends TestCase
         $expiresAt = 1000000;
 
         $cache->set("k", ["subscriber" => true, "plan" => 1, "expiresAt" => $expiresAt], 999000000);
+
         $this->assertNotNull($cache->get("k", 999500000));
         $this->assertNull($cache->get("k", $expiresAt * 1000 + 1));
     }
@@ -241,6 +254,7 @@ class CacheTest extends TestCase
     {
         $cache = new ResultCache(["ttl" => 1000]);
         $cache->set("k", $this->bad(), 0);
+
         $this->assertSame($this->bad(), $cache->get("k", 999));
         $this->assertNull($cache->get("k", 1000));
     }
@@ -249,6 +263,7 @@ class CacheTest extends TestCase
     {
         $cache = new ResultCache(["ttl" => 60000]);
         $cache->set("k", ["subscriber" => true, "plan" => 1, "expiresAt" => 500], 1000000);
+
         $this->assertSame(0, $cache->stats()["size"]);
     }
 
@@ -271,6 +286,7 @@ class CacheTest extends TestCase
         $this->assertNotNull($cache->get("c", 7));
         $this->assertNotNull($cache->get("d", 7));
         $stats = $cache->stats();
+
         $this->assertSame(3, $stats["size"]);
         $this->assertSame(1, $stats["evictions"]);
     }
@@ -290,9 +306,11 @@ class CacheTest extends TestCase
     public function testStaysBoundedUnderSustainedUniqueTraffic(): void
     {
         $cache = new ResultCache(["maxSize" => 50]);
+
         for ($index = 0; $index < 5000; $index++) {
             $cache->set("key-$index", $this->good(), $index);
         }
+
         $this->assertSame(50, $cache->stats()["size"]);
     }
 
@@ -303,11 +321,13 @@ class CacheTest extends TestCase
         for ($index = 0; $index < 200; $index++) {
             $cache->set("key-$index", $this->bad(), 0);
         }
+
         $this->assertSame(200, $cache->stats()["size"]);
 
         for ($index = 0; $index < 128; $index++) {
             $cache->set("late-$index", $this->bad(), 1000);
         }
+
         $this->assertLessThan(200, $cache->stats()["size"]);
     }
 
@@ -321,6 +341,7 @@ class CacheTest extends TestCase
         $cache->set("b", $this->good(), 2);
 
         $stats = $cache->stats();
+
         $this->assertSame(1, $stats["size"]);
         $this->assertSame(1, $stats["hits"]);
         $this->assertSame(1, $stats["misses"]);
@@ -331,6 +352,7 @@ class CacheTest extends TestCase
     {
         $cache = new ResultCache(["enabled" => false]);
         $cache->set("a", $this->good(), 0);
+
         $this->assertNull($cache->get("a", 1));
         $this->assertSame(0, $cache->stats()["size"]);
     }

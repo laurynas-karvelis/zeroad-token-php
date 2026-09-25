@@ -25,11 +25,13 @@ class Hostname
 
         // `https://example.com/path` -> `example.com`, so a URL or an origin both work
         $schemeEnd = strpos($value, "://");
+
         if ($schemeEnd !== false) {
             $value = substr($value, $schemeEnd + 3);
         }
 
         $pathStart = strpos($value, "/");
+
         if ($pathStart !== false) {
             $value = substr($value, 0, $pathStart);
         }
@@ -37,6 +39,7 @@ class Hostname
         if (strncmp($value, "[", 1) === 0) {
             // IPv6 literal: `[::1]:8080` -> `::1`
             $close = strpos($value, "]");
+
             if ($close !== false) {
                 return substr($value, 1, $close - 1);
             }
@@ -44,6 +47,7 @@ class Hostname
 
         // A single colon is a port separator; several colons is a bare IPv6 literal, which stays whole
         $lastColon = strrpos($value, ":");
+
         if ($lastColon !== false && strpos($value, ":") === $lastColon) {
             $value = substr($value, 0, $lastColon);
         }

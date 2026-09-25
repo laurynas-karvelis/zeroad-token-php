@@ -33,6 +33,7 @@ class Base64
     public static function fromBase64(string $input): ?string
     {
         $decoded = base64_decode($input, true);
+
         return $decoded === false ? null : $decoded;
     }
 }

@@ -59,6 +59,7 @@ class ExportsTest extends TestCase
             "publisherId" => "zapub_7Fq2xR9nKdW3mB6tYp1sVzAe",
             "hostnames" => "example.com",
         ]);
+
         $this->assertSame("example.com", $publisher->hostnames[0]);
     }
 
@@ -97,6 +98,7 @@ class ExportsTest extends TestCase
         // This package verifies. Anything able to mint a token belongs behind the platform's own auth.
         foreach (glob(__DIR__ . "/../src/*.php") as $file) {
             $source = file_get_contents($file);
+
             $this->assertNotRegExp(
                 '/\bsodium_crypto_sign_detached\b|\bsodium_crypto_sign_keypair\b|function\s+(sign|mint|issue)/i',
                 $source,
