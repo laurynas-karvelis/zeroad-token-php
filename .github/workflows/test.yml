@@ -3,26 +3,37 @@ name: Run unit tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   run-unit-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
-        php-version: ["7.2", "7.3", "7.4", "8.0", "8.1", "8.2", "8.3", "8.4", latest]
+        php-version: ["7.2", "7.3", "7.4", "8.0", "8.1", "8.2", "8.3", "8.4", "8.5", latest]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
+          extensions: sodium, apcu
+          ini-values: apc.enable_cli=1
+          tools: composer:v2
+
+      - name: Validate Composer metadata
+        run: composer validate --strict
 
       - name: Install dependencies
         run: |
-          composer install --no-interaction --no-progress
+          composer install --prefer-dist --no-interaction --no-progress
 
       - name: Run tests
         run: composer test
