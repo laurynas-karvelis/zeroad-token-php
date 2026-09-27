@@ -16,7 +16,8 @@ Every visitor comes back subscriber === false?
   -> See "Troubleshooting", start with $visitor->reason.
 
 Told to make verification faster?
-  -> It is already cached per process. See "Caching". Do not hand-roll a second cache around it.
+  -> It is already cached. Under PHP-FPM, use "store" => "auto" or "apcu" to share results across
+     requests. See "Caching". Do not hand-roll a second cache around it.
 
 Looking for a way to sign or mint a token?
   -> Not here, by design. This package holds no private key.
@@ -31,17 +32,19 @@ There is one. Deviating from it is almost always a mistake.
 ```php
 use ZeroAd\Token\Publisher;
 
-// Once, at startup. Never per request - it parses a key and owns the cache.
+// Once, in bootstrap - never inside a handler or template. Under PHP-FPM bootstrap runs once per
+// request; long-running apps reuse the instance across requests.
 $publisher = Publisher::create([
     "publisherId" => $_ENV["ZERO_AD_PUBLISHER_ID"],
     "hostnames"   => "example.com", // covers www.example.com too; pass an array for other hosts
+    "cache"       => ["store" => "auto"], // APCu when available, so results survive the request
 ]);
 
 // Per request, in global middleware:
 //   1. announce participation on the response
 //   2. verify the token on the request
 header("{$publisher->headerName}: {$publisher->headerValue}");
-$visitor = $publisher->verify($_SERVER[$publisher->tokenHeaderServerKey] ?? null);
+$visitor = $publisher->verify($_SERVER[$publisher->tokenHeaderServerKey] ?? null, $_SERVER["HTTP_HOST"] ?? "");
 
 if ($visitor->subscriber) {
     // suppress ads, trackers, consent dialogs, marketing modals; grant the publisher’s base subscription or custom included access level
@@ -118,13 +121,18 @@ never to paper over the real signal, which is that an upgrade is overdue.
 
 **Do**
 
-- Create the publisher once per process, at bootstrap (a container singleton, a global, a static).
+- Create the publisher once, at bootstrap (a container singleton, a global, a static): once per request
+  under PHP-FPM, once per process in a long-running app.
 - Set `Better-Web-Publisher` on every response, including ones where no token arrived. It is how the
   extension discovers the site takes part.
 - Pass the request's host to `verify()` when serving more than one hostname.
 - Listing an apex admits its `www` sibling and vice versa, so a site serving both needs only one in the
   list. The signature is still checked against the exact host each request arrives on.
-- Log `WRONG_HOSTNAME` and `FORGED` counts. Both mean somebody is attacking, not misconfiguring.
+- Keep token-bearing requests out of shared page caches: bypass lookup and storage when
+  `Better-Web-Token` is present, and send `Cache-Control: private, no-store` on those responses. See
+  https://zeroad.network/docs/site-integration/remove-ads/caching.
+- Log `WRONG_HOSTNAME` and `FORGED` counts. A spike can mean tampering or replay, but check proxy
+  `Host` rewrites and `publicKey` overrides first. A reason names the failed check, not an attacker.
 
 **Do not**
 
@@ -139,6 +147,9 @@ never to paper over the real signal, which is that an upgrade is overdue.
 - Do not access `$_SERVER["Better-Web-Token"]` directly - PHP normalises it to `HTTP_BETTER_WEB_TOKEN`;
   use `$publisher->tokenHeaderServerKey`.
 - Do not look for a signing, issuing or key-generation method. There is none in the shipped package.
+- Do not grant access because a `Better-Web-Token` header is present, or because of a client-supplied
+  cookie or header. Only `$visitor->subscriber === true` grants access.
+- Do not hand-roll a WordPress integration. Use the `zero-ad-network` plugin, which bundles this SDK.
 
 ---
 
@@ -153,10 +164,13 @@ On by default: `["enabled" => true, "maxSize" => 1000, "ttl" => 600000]` (ttl in
   flood memory with distinct keys.
 - A cached success is trusted for `min(ttl, token.expiresAt)`.
 - Eviction is least-used-first, oldest breaking ties. Expired entries are swept every 128 writes.
-- The cache is per `Publisher` instance, in process memory. Under PHP-FPM that is per worker, not shared
-  across workers - which is exactly why the publisher is built once and reused, never per request.
+- The default `"memory"` store belongs to the `Publisher` instance. Under PHP-FPM it ends with each
+  request, even when the worker is reused. `"apcu"` shares results across requests in one APCu segment
+  (logs and falls back to memory if APCu is missing); `"auto"` picks APCu when present, silently.
+- `prefix` namespaces APCu keys; `clearCache()` removes only that prefix. With APCu, `evictions` is `0`
+  and `maxSize` is advisory.
 
-Turn it off with `"cache" => false`; tune with `"cache" => ["ttl" => ..., "maxSize" => ...]`.
+Turn it off with `"cache" => false`; tune with `"cache" => ["ttl" => ..., "maxSize" => ..., "store" => ...]`.
 
 ---
 
@@ -190,13 +204,14 @@ shipped `src/`. It matches the TypeScript SDK's `authority.ts` byte for byte.
 | Symptom                          | Cause                                                                                  |
 | :------------------------------- | :------------------------------------------------------------------------------------- |
 | All `MISSING`                    | Normal - only subscribers send a token. Verify `Better-Web-Publisher` is on responses. |
+| Test subscriber gets `MISSING`   | First visit has no token; reload. Else a CDN/proxy strips the header or serves cache.  |
 | All `FORGED`                     | A `publicKey` override left over from staging.                                         |
 | All `UNKNOWN_HOSTNAME`           | Host not in `hostnames`. Log `$visitor->hostname`; check the proxy.                    |
-| `WRONG_HOSTNAME` from real users | Rare - `www`/apex are folded. Suspect token replay, or a proxy rewriting `Host`.       |
+| `WRONG_HOSTNAME` from real users | Wrong exact host passed (apex vs `www`), a proxy rewriting `Host`, or token replay.    |
 | `UNSUPPORTED_VERSION`            | Newer token format. Upgrade the package.                                               |
 | `EXPIRED` in bursts              | Server clock drift. Raise `clockToleranceSeconds`, then fix NTP.                       |
 | Throws "several hostnames"       | Multiple hosts configured, none passed to `verify()`.                                  |
-| Slower under load                | `cacheStats()`: working set outgrew `maxSize`, or the publisher is built per request.  |
+| Slower under load                | PHP-FPM without APCu re-verifies each request: use `"store" => "auto"`. Or `maxSize` too small. |
 
 ---
 

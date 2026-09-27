@@ -1,87 +1,80 @@
 # zeroad.network/token (PHP)
 
-Verify [Zero Ad Network](https://zeroad.network) subscriber tokens in your PHP backend. Offline, with no
-dependencies beyond `ext-sodium` and no calls back to us.
+Recognise [Zero Ad Network](https://zeroad.network) subscribers in your PHP backend, and serve them a clean page.
+Verification runs offline, with no dependencies beyond `ext-sodium` and no calls back to us.
 
 ```bash
 composer require zeroad.network/token
 ```
 
-This is the PHP port of [`@zeroad.network/token`](https://www.npmjs.com/package/@zeroad.network/token).
-It speaks the exact same wire format, so a token minted by the platform verifies identically on either.
+**In short**
 
----
+- Subscribers pay one monthly membership, called Freedom, and use our browser extension.
+- On your site, the extension sends a signed `Better-Web-Token` header. This package checks it and answers yes or no.
+- For a yes, serve the page without ads, cookie banners, non-essential trackers or marketing popups. If you sell access, unlock your included paid content.
+- You earn from the time subscribers spend on your site, and keep 70% of your share. Transfers to Stripe
+  start once your balance reaches $30 and payout setup is complete. [How earnings work →](https://zeroad.network/docs/monetization)
 
-## The thirty second version
+Step-by-step guide: [PHP guide](https://zeroad.network/docs/site-integration/remove-ads/php).
+Using WordPress? Use the [WordPress plugin](https://zeroad.network/docs/site-integration/remove-ads/wordpress) instead.
 
-Zero Ad Network subscribers pay a monthly fee and install a browser extension. When one of them visits
-a recognized website, the extension attaches a cryptographically signed token to eligible requests.
-You verify it locally, and if it checks out, serve a clean page without ads, non-essential third-party trackers, cookie consent screens,
-or marketing popups, including newsletter signup prompts. If you sell access, grant your base subscription
-or a custom level that unlocks paid content or functionality. Higher tiers may remain restricted.
-
-Earnings are calculated monthly from funded subscriber attention and allocation preferences. Publishers share
-70% of received revenue after processing fees and excluding tax; the platform retains 30%. Transfers to
-Stripe Express require a $30 accumulated balance and completed, eligible payout setup. Smaller balances
-carry forward. A Stripe transfer is separate from a bank withdrawal.
-See [how earnings work](https://zeroad.network/docs/monetization).
-
-The SDK verifies membership; your application decides which content belongs to that included access level.
-A subscriber token does not grant site administration, prove a purchase, or replace private-content permissions.
-An already clean, unrestricted site only needs to announce its Publisher ID.
-
-Two headers, and this package handles both ends:
-
-| Direction      | Header                 | Carries                                         |
-| :------------- | :--------------------- | :---------------------------------------------- |
-| You -> visitor | `Better-Web-Publisher` | your publisher ID, so the visit can be credited |
-| Visitor -> you | `Better-Web-Token`     | their signed, hostname-bound membership token   |
+This is the PHP port of [`@zeroad.network/token`](https://www.npmjs.com/package/@zeroad.network/token). It
+speaks the same wire format, so a token verifies identically on either.
 
 ---
 
 ## Requirements
 
-| Runtime | Version | Ready |
-| :------ | :------ | :---: |
-| PHP 7   | 7.2+    |  ✅   |
-| PHP 8   | 8.0+    |  ✅   |
+- PHP 7.2 or newer, including PHP 8
+- `ext-sodium`, bundled with PHP since 7.2
+- Optional: [APCu](https://www.php.net/manual/en/book.apcu.php), to share verification results between requests
 
-`ext-sodium` (bundled with PHP since 7.2) is the only dependency.
+---
+
+## Two headers
+
+This package handles both ends:
+
+| Direction      | Header                 | Carries                                                   |
+| :------------- | :--------------------- | :-------------------------------------------------------- |
+| You → visitor  | `Better-Web-Publisher` | Your Publisher ID, so the extension finds you and credits the visit |
+| Visitor → you  | `Better-Web-Token`     | Their signed membership token, bound to your hostname     |
+
+**Already clean?** If your site has no ads, trackers, cookie banners, popups or paywall, you only need
+to send `Better-Web-Publisher`. You don't need to verify anything.
+[Check whether your site is already clean →](https://zeroad.network/docs/site-integration#is-your-site-already-clean)
 
 ---
 
 ## Integrate
 
-### 1. Register
+### 1. Copy your Publisher ID
 
-[Sign up](https://zeroad.network/login) and copy your account’s **Publisher ID** (`zapub_...`).
+[Sign in](https://zeroad.network/login), then copy your **Publisher ID** from
+[Sites & creators](https://zeroad.network/sites#publisher-id). It starts with `zapub_`.
 
-You do not need a paid subscription or separate registration for each site. Announce the same ID on
-all your properties. Accepted subscriber activity creates an observed integration after upload and
-processing. You can also add and verify a website from your dashboard, then use **Test in your browser**.
-Test access earns nothing.
+- You don't need a paid membership to publish.
+- Use the same ID on every site you run. There is no separate sign-up per site.
 
 ### 2. Create a publisher
 
 ```php
 use ZeroAd\Token\Publisher;
 
-// Bootstrap per PHP-FPM request; reuse the instance in long-running applications.
 $publisher = Publisher::create([
     "publisherId" => $_ENV["ZERO_AD_PUBLISHER_ID"],
-    "hostnames"   => "example.com", // covers www.example.com too; pass an array for other hosts
+    "hostnames"   => "example.com", // also covers www.example.com; pass an array for other hosts
+    "cache"       => ["store" => "auto"], // share results through APCu when available
 ]);
 ```
 
-`hostnames` is every host you serve. It is required, and it matters - see
-[why hostnames are a whitelist](#why-hostnames-are-a-whitelist). Listing an apex covers its `www` (and
-vice versa), so `"example.com"` already admits `www.example.com`.
+Create it in your bootstrap. With PHP-FPM, that runs once per request. In a long-running application,
+reuse the instance across requests.
 
-### 3. Wire up one middleware
+`hostnames` lists every host you serve. It's required, because a token only verifies on a listed host.
+See [why hostnames are an allowlist](#why-hostnames-are-an-allowlist).
 
-Two things happen on every request: announce participation on the response, and verify the token on the
-request. PHP exposes the request header under a `$_SERVER` key, which `$publisher->tokenHeaderServerKey`
-gives you.
+### 3. Check every request
 
 ```php
 header("{$publisher->headerName}: {$publisher->headerValue}");
@@ -92,19 +85,36 @@ $visitor = $publisher->verify(
 );
 ```
 
-### 4. Branch on it
+This does two things on every request:
+
+1. Sends `Better-Web-Publisher`, before any output, even when no token arrived. This is how the extension discovers your site.
+2. Checks the visitor's token. PHP exposes it as `$_SERVER["HTTP_BETTER_WEB_TOKEN"]`, which
+   `$publisher->tokenHeaderServerKey` gives you.
+
+### 4. Serve subscribers the clean page
 
 ```php
 if ($visitor->subscriber) {
-    // Remove ads and interruptions; grant your included content access.
+    // Skip ads, cookie consent, non-essential trackers and marketing popups.
+    // If you sell access, unlock your base subscription or included paid content.
 }
 ```
 
-Apply that decision in your rendering and access rules, and configure page caches as described below.
-A working example lives in [`examples/`](./examples).
+Unlock paid content on the server. Hiding a paywall overlay doesn't help if the content was never sent.
+Higher tiers can stay restricted. A working example lives in [`examples/`](./examples).
 
-> Set `Better-Web-Publisher` even on pages where you never read a token. It is how the extension
-> discovers that your site takes part at all, and how visits get attributed to you.
+### 5. Keep subscriber pages out of shared caches
+
+If a CDN, reverse proxy or page cache sits in front of PHP, set it to skip requests carrying `Better-Web-Token`.
+Those requests must reach PHP. [Set up page caching and CDNs →](https://zeroad.network/docs/site-integration/remove-ads/caching)
+
+### 6. Check it works
+
+1. Confirm your responses include `Better-Web-Publisher`:
+   `curl -s -D - -o /dev/null https://example.com/ | grep -i better-web-publisher`
+2. In your dashboard, open your website's page and select **Test in your browser**. No paid membership needed.
+3. Reload your site. You should see the clean page.
+4. Open the same URL without the extension, with caches warm. You should see the normal page.
 
 ---
 
@@ -115,12 +125,12 @@ A working example lives in [`examples/`](./examples).
 | Option                  | Type             | Default      |                                                             |
 | :---------------------- | :--------------- | :----------- | :---------------------------------------------------------- |
 | `publisherId`           | `string`         | -            | From your dashboard. `zapub_` followed by 24 alphanumerics. |
-| `hostnames`             | `string\|array`  | -            | Every host you serve; an apex covers its `www`. Ports, schemes and paths are stripped. |
+| `hostnames`             | `string\|array`  | -            | Every host you serve. An apex covers its `www`. Ports, schemes and paths are stripped. |
 | `publicKey`             | `string`         | platform key | Override for staging and tests. Leave alone in production.  |
 | `clockToleranceSeconds` | `int`            | `60`         | Slack on expiry, for servers whose clocks drift.            |
-| `cache`                 | `bool\|array`    | on           | See [caching](#caching). `false` disables it.               |
+| `cache`                 | `bool\|array`    | on           | See [caching](#caching). `false` turns it off.              |
 
-Returns a `Publisher` instance. Reuse it within the request, or across requests in a long-running application:
+It returns a `Publisher`. Reuse it within the request, or across requests in a long-running application:
 
 |                                             |                                                       |
 | :------------------------------------------ | :---------------------------------------------------- |
@@ -135,14 +145,14 @@ Returns a `Publisher` instance. Reuse it within the request, or across requests 
 
 ### `$publisher->verify($token, $hostname = null)`
 
-Takes the raw header value - a `string`, an `array` (some stacks hand back an array for a repeated
-header; the first wins), or `null`. Never throws on bad input; a junk token is a result, not an
-exception.
+Pass the raw header value: a `string`, an `array` (some stacks return an array for a repeated header; the
+first wins), or `null`. It never throws on bad input. A junk token is a result, not an exception.
 
-Pass the actual public request hostname, including when serving both an apex and `www`. Omitting it
-uses the single configured hostname. A hostname outside the allowlist is rejected.
+- **Pass the actual public request hostname,** including when you serve both an apex and `www`.
+- **If you omit it,** the single configured hostname is used. With several configured hostnames, omitting it throws.
+- **A hostname outside the allowlist** is rejected.
 
-Returns a `VerificationResult`. `subscriber` says which branch you are in:
+`$visitor->subscriber` tells you which branch you're in:
 
 ```php
 $visitor = $publisher->verify($token, $host);
@@ -159,51 +169,50 @@ $visitor->hostname; // what it was verified against
 $visitor->cached;   // whether this skipped the cryptography
 ```
 
-`$visitor->toArray()` gives a JSON-friendly copy (with `expiresAt` as a unix timestamp).
-
-The only case `verify()` throws is when several hostnames are configured and none is passed.
+`$visitor->toArray()` gives a JSON-friendly copy, with `expiresAt` as a Unix timestamp.
 
 ### `Rejection`
 
-Rejection reasons describe the failed check, not proof of an attack.
+A reason names the check that failed. It isn't proof of an attack.
 
-| Reason (`Rejection::`) | Means                                                  | Ordinary?                        |
+| Reason (`Rejection::`) | Means                                                  | What to do                       |
 | :--------------------- | :----------------------------------------------------- | :------------------------------- |
-| `MISSING`              | No token header. Most of your traffic.                 | yes                              |
-| `MALFORMED`            | Not a well-formed token.                               | yes                              |
-| `UNSUPPORTED_VERSION`  | Unsupported format; check for an SDK update.           | yes, but see below               |
-| `EXPIRED`              | Expiry field is past the allowed time.                 | yes                              |
-| `UNKNOWN_HOSTNAME`     | The host asked for is not in your whitelist.           | check your config                |
-| `WRONG_HOSTNAME`       | Authority signature passed; hostname signature failed. | check hostname, proxy, or token  |
-| `FORGED`               | Authority signature failed.                            | check authority key or token     |
+| `MISSING`              | No token header. Most of your traffic.                 | Nothing. This is normal.         |
+| `MALFORMED`            | Not a well-formed token.                               | Nothing.                         |
+| `UNSUPPORTED_VERSION`  | Unsupported token format.                              | Check for an SDK update.         |
+| `EXPIRED`              | Expiry is past the allowed time.                       | Nothing, unless it comes in bursts. |
+| `UNKNOWN_HOSTNAME`     | The host isn't in your allowlist.                      | Check your `hostnames` config.   |
+| `WRONG_HOSTNAME`       | Authority signature passed; hostname signature failed. | Check the hostname and your proxy. |
+| `FORGED`               | Authority signature failed.                            | Check for a `publicKey` override. |
 
-When a token arrives whose version is newer than this package understands, it is rejected as
-`UNSUPPORTED_VERSION` and a line is written to the PHP error log suggesting an SDK update.
-The warning alone does not prove that the token is genuine or that a protocol upgrade has shipped. To
-silence it - during a staged rollout, or in tests that feed such tokens on purpose - call
-`ZeroAd\Token\VersionWarning::suppress()` once at startup.
+When a token arrives with a version newer than this package understands, it's rejected as
+`UNSUPPORTED_VERSION`, and a line in the PHP error log suggests an SDK update. The warning alone doesn't
+prove the token is genuine, or that a protocol upgrade has shipped. To silence it during a staged rollout,
+or in tests that send such tokens on purpose, call `ZeroAd\Token\VersionWarning::suppress()` once at startup.
 
-This package **only verifies**. The platform’s private authority key signs credentials; the extension’s
-private ephemeral keys bind those credentials to hostnames. Neither key is included in a visitor token.
+This package **only verifies**. The platform's private authority key signs credentials, and the extension's
+private ephemeral keys bind them to hostnames. Neither key is in a visitor token.
 
 ---
 
-## Discovery and page caching
+## Good to know
 
-The first request to an unfamiliar site may have no token: the extension discovers your ID from the
-response or loaded page. Reload after recognition. Production injection covers HTTPS main-frame and
-media requests for the exact recognized hostname, not arbitrary fetch/XHR or subdomains.
+- **The first visit may have no token.** The extension discovers your ID from a page it has already loaded.
+  The next page or a reload carries the token.
+- **Tokens reach page and media requests only.** The extension adds them to HTTPS main-frame and media
+  requests for the exact recognised hostname. Not to fetch/XHR calls, and not to subdomains.
+- **Proxies must pass things through.** Forward `Better-Web-Token`, and keep the public `Host` header.
+- **A header alone never grants access.** Only a successful `verify()` does.
 
-Forward `Better-Web-Token` and preserve the public request hostname through proxies. Configure every
-CDN, proxy, and page cache to bypass both lookup and storage for token-bearing requests, and return
-private, non-cacheable subscriber responses. Header presence alone must never grant access. Test the
-same URL with and without a valid token while caches are warm. The SDK’s result cache below caches
-verification decisions, not HTML.
+---
 
 ## Caching
 
-The extension reuses a token for its bound hostname while that credential remains valid, so a returning
-visitor may send bytes you have already checked. Caching avoids repeating the signature checks. It is on by default and there is rarely a reason to touch it.
+The extension reuses a token for its bound hostname while the credential is valid. So a returning visitor
+may send bytes you've already checked. Caching skips repeating the signature checks. It's on by default.
+
+This caches verification results, not HTML. For page caches, see
+[Page caching and CDNs](https://zeroad.network/docs/site-integration/remove-ads/caching).
 
 ```php
 Publisher::create([
@@ -217,31 +226,32 @@ Publisher::create([
 | :-------- | :--------- | :-------------------------------------------------------------------- |
 | `enabled` | `true`     |                                                                       |
 | `ttl`     | `600000`   | milliseconds a verdict is trusted                                     |
-| `maxSize` | `1000`     | entries (memory store only; APCu manages its own memory)             |
-| `store`   | `"memory"` | `"memory"`, `"apcu"`, or `"auto"` - where verdicts live (see below)   |
-| `prefix`  | see below  | namespaces the APCu keys; ignored by the memory store                 |
+| `maxSize` | `1000`     | entries (memory store only; APCu manages its own memory)              |
+| `store`   | `"memory"` | `"memory"`, `"apcu"` or `"auto"`: where verdicts live (see below)     |
+| `prefix`  | see below  | namespaces the APCu keys; the memory store ignores it                 |
 
-Three things it does that are worth knowing about:
+Three things worth knowing:
 
-**Failures are cached too.** A forged token costs exactly as much to reject as a real one costs to
-accept, and whoever sends it is likely to send it again. This is safe because, for a fixed public key, a
-rejection can never later become an acceptance.
+**Failures are cached too.** A forged token costs as much to reject as a real one costs to accept, and
+whoever sends it will likely send it again. This is safe: for a fixed public key, a rejection can never
+later become an acceptance.
 
 **A success never outlives the token.** The stored expiry is the earlier of your TTL and the token's own
-`expiresAt`, so a generous TTL cannot extend anybody's subscription.
+`expiresAt`. A generous TTL can't extend anybody's membership.
 
-**Cheap rejections are not cached.** A malformed, missing or expired token is thrown out by a length or
-byte check. Caching those would save nothing and would hand anyone who can send a request an easy way to
-fill memory with distinct keys.
+**Cheap rejections are not cached.** A length or byte check throws out a malformed, missing or expired
+token. Caching those would save nothing, and would let anyone fill memory with distinct keys.
 
-The default **memory** store belongs to the `Publisher` instance. Under ordinary PHP-FPM it ends
-with the request, even when the worker process is reused. In a long-running application, reuse the
-instance to keep cached results across requests. Entries are evicted least-used-first, oldest breaking ties.
+### Where results live
 
-### Sharing verdicts across requests with APCu
+| Store      | Lifetime under PHP-FPM | Use it when |
+| :--------- | :--------------------- | :---------- |
+| `"memory"` | Ends with each request, even when the worker is reused | Long-running apps that reuse the publisher |
+| `"apcu"`   | Shared across requests in the same APCu segment | You know APCu is installed |
+| `"auto"`   | APCu when present, otherwise memory | Code that ships to hosts you don't control |
 
-On a classic PHP-FPM stack, application memory starts afresh for each request, so a returning
-visitor’s token is re-verified. Use APCu to share verdicts across requests using the same APCu segment:
+With `"apcu"`, if the extension isn't available, the publisher logs a line and falls back to memory. The
+token is still verified, just not shared. `"auto"` falls back silently.
 
 ```php
 Publisher::create([
@@ -251,19 +261,17 @@ Publisher::create([
 ]);
 ```
 
-`"apcu"` requires the [APCu extension](https://www.php.net/manual/en/book.apcu.php); if it is not
-available the publisher logs a line and falls back to the memory store, so a token is still verified,
-just not shared. `"auto"` picks APCu when present and memory otherwise, silently - a good default for code
-that ships to hosts you do not control. The `prefix` namespaces the keys so several sites sharing one
-APCu segment do not collide, and `clearCache()` removes only keys under that prefix. With the APCu store,
-`cacheStats()` reports `evictions` as `0` (APCu evicts under its own memory pressure) and `maxSize` is
-advisory.
+- **`prefix`** namespaces the keys, so several sites sharing one APCu segment don't collide. `clearCache()`
+  removes only keys under that prefix.
+- **With APCu,** `cacheStats()` reports `evictions` as `0`, because APCu evicts under its own memory
+  pressure. `maxSize` is advisory.
+- **With memory,** entries are evicted least-used-first, oldest breaking ties.
 
 ---
 
 ## How the token works
 
-You do not need this to integrate. You may want it before you trust it.
+You don't need this to integrate. You may want it before you trust it.
 
 A token is 174 bytes, 232 base64url characters, and carries **two** Ed25519 signatures.
 
@@ -278,42 +286,47 @@ A token is 174 bytes, 232 base64url characters, and carries **two** Ed25519 sign
      110    64  hostnameSignature    over "better-web:hostname:v1"  || bytes[0..110) || hostname
 ```
 
-**The platform signs batch credentials.** The extension checks its pool hourly and refreshes when
-credentials run low or approach expiry. It generates disposable keypairs locally and sends only the
-public halves to the platform. The platform checks account entitlement and signs the plan, expiry, and
-each key. Standard credentials expire at midnight UTC two days after issuance, about 24–48 hours later.
-Demo and publisher-test access use separately issued, hostname-restricted tokens.
+**1. The platform signs batch credentials.** The extension generates disposable key pairs locally, and sends
+only the public halves. The platform checks the account's membership, then signs the plan, expiry and each
+key. Standard credentials expire at midnight UTC two days after issue, about 24–48 hours later. The
+extension checks its pool hourly, and refreshes when credentials run low or near expiry. Demo and
+publisher-test access use separately issued tokens, restricted to one hostname.
 
-**The extension binds one to your hostname.** Offline, the first time it meets `example.com` it takes an
-unused keypair and signs your hostname with the private half, then reuses that bound token until it
-expires.
+**2. The extension binds one to your hostname.** The first time it meets `example.com`, it takes an unused
+key pair and signs your hostname with the private half. This happens offline. It reuses that bound token
+until it expires.
 
-**You verify both signatures.** The first proves the platform authorized the credential’s plan and expiry.
-The second proves it was bound to _your_ hostname.
+**3. You verify both signatures.** The first proves the platform authorised the plan and expiry. The second
+proves the token was bound to _your_ hostname.
 
-The hostname is deliberately absent from the wire. Your server already knows what it serves and rebuilds
-the signed message from that, so a token bound elsewhere simply fails the signature.
+The hostname is deliberately absent from the wire. Your server already knows what it serves, and rebuilds
+the signed message from that. A token bound elsewhere simply fails the signature.
 
-Tokens contain no account ID, name, or email. Reuse permits same-host correlation and replay during
-validity. Issuance is authenticated, so the platform sees the account requesting each public key;
-this is not blind issuance or mathematical anonymity. The extension separately uploads account-linked
-attention data, including creator page URLs. Offline verification cannot immediately revoke an issued
-token after cancellation or account closure.
+### Privacy
 
-### Why hostnames are a whitelist
+- Tokens contain no account ID, name or email.
+- Reusing a token allows correlation and replay on the same host while it's valid.
+- Issuance is authenticated, so the platform sees which account requests each public key. This isn't blind
+  issuance or mathematical anonymity.
+- The extension separately uploads account-linked attention data, including creator page URLs.
+- Offline verification can't revoke an issued token straight away after cancellation or account closure.
+  It stops working when it expires.
 
-`hostnames` is required, and `verify()` will not fall back to whatever arrived in the `Host` header,
-because tokens are bound to a hostname and `Host` is set by the client. Without the whitelist an attacker
-could bind a token to a domain they control, send it with `Host: that-domain.example`, and be admitted.
-Listing your hosts removes the possibility.
+### Why hostnames are an allowlist
 
-`www.example.com` and `example.com` are technically different hosts, but listing either admits both, so a
-site that serves both needs only one in the list. The signature is still checked against the exact host
-each request arrives on.
+`hostnames` is required, and `verify()` won't fall back to whatever arrived in the `Host` header. Tokens are
+bound to a hostname, and the client sets `Host`. Without the allowlist, an attacker could bind a token to a
+domain they control, send it with `Host: that-domain.example`, and be admitted. Listing your hosts removes
+that possibility.
+
+`www.example.com` and `example.com` are different hosts, but listing either admits both. So a site serving
+both needs only one in the list. The signature is still checked against the exact host each request arrives on.
 
 ---
 
 ## Framework examples
+
+In middleware, check the request, set the publisher header on the response, and pass `$visitor` to your templates.
 
 ### Laravel
 
@@ -391,34 +404,9 @@ class ZeroAdNetworkListener
 
 ### WordPress
 
-```php
-require_once __DIR__ . "/vendor/autoload.php";
-
-use ZeroAd\Token\Publisher;
-
-$GLOBALS["zeroad_publisher"] = Publisher::create([
-    "publisherId" => get_option("zeroad_publisher_id"),
-    "hostnames"   => parse_url(home_url(), PHP_URL_HOST),
-]);
-
-add_action("send_headers", function () {
-    $publisher = $GLOBALS["zeroad_publisher"];
-    header("{$publisher->headerName}: {$publisher->headerValue}");
-});
-
-add_action("init", function () {
-    $publisher = $GLOBALS["zeroad_publisher"];
-    $GLOBALS["zeroad_visitor"] = $publisher->verify(
-        $_SERVER[$publisher->tokenHeaderServerKey] ?? null,
-        $_SERVER["HTTP_HOST"] ?? ""
-    );
-});
-
-// In a template:
-if (($GLOBALS["zeroad_visitor"] ?? null) && $GLOBALS["zeroad_visitor"]->subscriber) {
-    // clean page
-}
-```
+Use the [Zero Ad Network plugin](https://wordpress.org/plugins/zero-ad-network/). It bundles this SDK, and
+also handles page caches and popular ad, consent, popup and membership plugins. See the
+[WordPress guide](https://zeroad.network/docs/site-integration/remove-ads/wordpress).
 
 ---
 
@@ -426,43 +414,42 @@ if (($GLOBALS["zeroad_visitor"] ?? null) && $GLOBALS["zeroad_visitor"]->subscrib
 
 Measured on PHP 8.5, Apple Silicon, single core, libsodium 1.0.22, via `php benchmarks/verify.php`:
 
-|                               |                                                     |
-| :---------------------------- | :-------------------------------------------------- |
-| Cold verification, end to end | 88us, about 11,300/s                                |
-| Cached verdict                | 0.95us, about 1,050,000/s                           |
-| Malformed token               | about 1.3us, rejected on length before it is decoded |
+|                               |                                                      |
+| :---------------------------- | :--------------------------------------------------- |
+| Cold verification, end to end | 88µs, about 11,300/s                                 |
+| Cached verdict                | 0.95µs, about 1,050,000/s                            |
+| Malformed token               | about 1.3µs, rejected on length before it's decoded  |
 
-Verification is two Ed25519 checks through `ext-sodium` (`sodium_crypto_sign_verify_detached`), so the
-cold cost tracks libsodium and is in the same ballpark as the TypeScript SDK. At ~0.09ms it is already a
-rounding error next to a database query or a template render.
+Verification is two Ed25519 checks through `ext-sodium` (`sodium_crypto_sign_verify_detached`). The cold
+cost tracks libsodium, and is close to the TypeScript SDK. At about 0.09ms, it's a rounding error next to a
+database query or a template render.
 
-The one thing worth knowing is PHP's process model. The default memory cache lives only for the request
-that filled it, so on a classic PHP-FPM stack the cached number above applies within a request, not
-across them - a returning visitor's identical token is re-verified cold on the next page load. Point the
-cache at APCu (`"cache" => ["store" => "apcu"]`, see [Caching](#caching)) to turn that repeat into a
-shared-memory lookup across the whole worker pool.
+On classic PHP-FPM, the default memory cache lasts only for its request. So the cached figure applies within
+a request, and a returning visitor's token is verified cold on the next page load. Use
+`"cache" => ["store" => "apcu"]` or `"auto"` to share results across the whole worker pool.
 
 ---
 
 ## Troubleshooting
 
-**Every visitor comes back `MISSING`.** Expected - only subscribers send a token. Confirm the pipe works
-by checking `Better-Web-Publisher` appears on your responses (`curl -sI https://your-site`).
+**Every visitor comes back `MISSING`.** That's expected: only subscribers send a token. Check that
+`Better-Web-Publisher` appears on your responses, then test with **Test in your browser**.
 
-**`UNKNOWN_HOSTNAME`.** The host being verified is not in `hostnames` (the `www`/apex sibling of a listed
-host counts as listed). Log `$visitor->hostname` to see what actually arrived; a reverse proxy may be
-passing something you did not expect.
+**A test subscriber comes back `MISSING`.** Reload after the first visit. Then check that your CDN or proxy
+forwards `Better-Web-Token` to PHP, and doesn't serve a cached page.
 
-**`WRONG_HOSTNAME` from real visitors.** Apex and `www` share allowlist coverage, but their signatures
-are distinct. Pass the actual public request hostname and check proxy rewrites. A modified or replayed
-token can also fail the hostname signature.
+**`UNKNOWN_HOSTNAME`.** The host isn't in `hostnames`. The `www`/apex sibling of a listed host counts as
+listed. Log `$visitor->hostname` to see what arrived; a reverse proxy may pass something unexpected.
+
+**`WRONG_HOSTNAME` from real visitors.** Apex and `www` share allowlist coverage, but their signatures are
+different. Pass the actual public hostname, and check for proxy rewrites. A modified or replayed token can
+also cause this.
 
 **`FORGED` for everybody.** A `publicKey` override left over from staging.
 
-**Slower than expected.** Check `$publisher->cacheStats()`. A high `evictions` count against `size` at
-`maxSize` means the working set outgrew the cache - raise `maxSize`. Confirm you create the publisher
-once per request in PHP-FPM, or reuse it across requests in a long-running application. Use APCu
-for cross-request caching in PHP-FPM.
+**Slower than expected.** Check `$publisher->cacheStats()`. A high `evictions` count, with `size` at
+`maxSize`, means the working set outgrew the cache: raise `maxSize`. Create the publisher once per request
+under PHP-FPM, or reuse it in a long-running app. Use APCu to cache across PHP-FPM requests.
 
 ---
 
