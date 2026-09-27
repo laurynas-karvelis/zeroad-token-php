@@ -10,9 +10,9 @@ composer require zeroad.network/token
 **In short**
 
 - Subscribers pay one monthly membership, called Freedom, and use our browser extension.
-- On your site, the extension sends a signed `Better-Web-Token` header. This package checks it and answers yes or no.
+- On your website, the extension sends a signed `Better-Web-Token` header. This package checks it and answers yes or no.
 - For a yes, serve the page without ads, cookie banners, non-essential trackers or marketing popups. If you sell access, unlock your included paid content.
-- You earn from the time subscribers spend on your site, and keep 70% of your share. Transfers to Stripe
+- You earn from the time subscribers spend on your website, and keep 70% of your share. Transfers to Stripe
   start once your balance reaches $30 and payout setup is complete. [How earnings work →](https://zeroad.network/docs/monetization)
 
 Step-by-step guide: [PHP guide](https://zeroad.network/docs/site-integration/remove-ads/php).
@@ -40,9 +40,9 @@ This package handles both ends:
 | You → visitor  | `Better-Web-Publisher` | Your Publisher ID, so the extension finds you and credits the visit |
 | Visitor → you  | `Better-Web-Token`     | Their signed membership token, bound to your hostname     |
 
-**Already clean?** If your site has no ads, trackers, cookie banners, popups or paywall, you only need
+**Already clean?** If your website has no ads, trackers, cookie banners, popups or paywall, you only need
 to send `Better-Web-Publisher`. You don't need to verify anything.
-[Check whether your site is already clean →](https://zeroad.network/docs/site-integration#is-your-site-already-clean)
+[Check whether your website is already clean →](https://zeroad.network/docs/site-integration#is-your-website-already-clean)
 
 ---
 
@@ -51,10 +51,10 @@ to send `Better-Web-Publisher`. You don't need to verify anything.
 ### 1. Copy your Publisher ID
 
 [Sign in](https://zeroad.network/login), then copy your **Publisher ID** from
-[Sites & creators](https://zeroad.network/sites#publisher-id). It starts with `zapub_`.
+[Websites & creators](https://zeroad.network/sites#publisher-id). It starts with `zapub_`.
 
 - You don't need a paid membership to publish.
-- Use the same ID on every site you run. There is no separate sign-up per site.
+- Use the same ID on every website you run. There is no separate sign-up per website.
 
 ### 2. Create a publisher
 
@@ -87,7 +87,7 @@ $visitor = $publisher->verify(
 
 This does two things on every request:
 
-1. Sends `Better-Web-Publisher`, before any output, even when no token arrived. This is how the extension discovers your site.
+1. Sends `Better-Web-Publisher`, before any output, even when no token arrived. This is how the extension discovers your website.
 2. Checks the visitor's token. PHP exposes it as `$_SERVER["HTTP_BETTER_WEB_TOKEN"]`, which
    `$publisher->tokenHeaderServerKey` gives you.
 
@@ -113,7 +113,7 @@ Those requests must reach PHP. [Set up page caching and CDNs →](https://zeroad
 1. Confirm your responses include `Better-Web-Publisher`:
    `curl -s -D - -o /dev/null https://example.com/ | grep -i better-web-publisher`
 2. In your dashboard, open your website's page and select **Test in your browser**. No paid membership needed.
-3. Reload your site. You should see the clean page.
+3. Reload your website. You should see the clean page.
 4. Open the same URL without the extension, with caches warm. You should see the normal page.
 
 ---
@@ -261,7 +261,7 @@ Publisher::create([
 ]);
 ```
 
-- **`prefix`** namespaces the keys, so several sites sharing one APCu segment don't collide. `clearCache()`
+- **`prefix`** namespaces the keys, so several websites sharing one APCu segment don't collide. `clearCache()`
   removes only keys under that prefix.
 - **With APCu,** `cacheStats()` reports `evictions` as `0`, because APCu evicts under its own memory
   pressure. `maxSize` is advisory.
@@ -319,7 +319,7 @@ bound to a hostname, and the client sets `Host`. Without the allowlist, an attac
 domain they control, send it with `Host: that-domain.example`, and be admitted. Listing your hosts removes
 that possibility.
 
-`www.example.com` and `example.com` are different hosts, but listing either admits both. So a site serving
+`www.example.com` and `example.com` are different hosts, but listing either admits both. So a website serving
 both needs only one in the list. The signature is still checked against the exact host each request arrives on.
 
 ---

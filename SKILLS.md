@@ -124,9 +124,9 @@ never to paper over the real signal, which is that an upgrade is overdue.
 - Create the publisher once, at bootstrap (a container singleton, a global, a static): once per request
   under PHP-FPM, once per process in a long-running app.
 - Set `Better-Web-Publisher` on every response, including ones where no token arrived. It is how the
-  extension discovers the site takes part.
+  extension discovers the website takes part.
 - Pass the request's host to `verify()` when serving more than one hostname.
-- Listing an apex admits its `www` sibling and vice versa, so a site serving both needs only one in the
+- Listing an apex admits its `www` sibling and vice versa, so a website serving both needs only one in the
   list. The signature is still checked against the exact host each request arrives on.
 - Keep token-bearing requests out of shared page caches: bypass lookup and storage when
   `Better-Web-Token` is present, and send `Cache-Control: private, no-store` on those responses. See
@@ -191,7 +191,7 @@ Turn it off with `"cache" => false`; tune with `"cache" => ["ttl" => ..., "maxSi
 
 The authority signs the batch credential (bytes 0 to 37) at issuance, after checking the subscription is
 live. The extension holds the matching ephemeral private key and signs the hostname locally, the first
-time it meets a site. The hostname is not on the wire; the verifier rebuilds the signed message from the
+time it meets a website. The hostname is not on the wire; the verifier rebuilds the signed message from the
 host it serves, so a token bound elsewhere fails the signature rather than a string comparison.
 
 `tests/Fixtures/Authority.php` is the reference implementation of both signing steps, kept out of the
