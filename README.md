@@ -1,6 +1,6 @@
 # zeroad.network/token (PHP)
 
-Recognise [Zero Ad Network](https://zeroad.network) subscribers in your PHP backend, and serve them a clean page.
+Recognise [Zero Ad Network](https://zeroad.network) subscribers in your PHP backend so you can let them browse without ads and access the paid content you include with their membership.
 Verification runs offline, with no dependencies beyond `ext-sodium` and no calls back to us.
 
 ```bash
