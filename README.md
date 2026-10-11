@@ -9,9 +9,9 @@ composer require zeroad.network/token
 
 **In short**
 
-- Subscribers pay one monthly membership, called Freedom, and use our browser extension.
+- Subscribers pay for one monthly membership, called Freedom, and use our browser extension.
 - On your website, the extension sends a signed `Better-Web-Token` header. This package checks it and answers yes or no.
-- For a yes, serve the page without ads, cookie banners, non-essential trackers or marketing popups. If you sell access, unlock your included paid content.
+- If verification succeeds, serve the page without ads, cookie banners, non-essential trackers or marketing popups. If you sell access, unlock your included paid content.
 - You earn from the time subscribers spend on your website, and keep 70% of your share. Transfers to Stripe
   start once your balance reaches $30 and payout setup is complete. [How earnings work â†’](https://zeroad.network/docs/monetization)
 
@@ -208,7 +208,7 @@ also handles page caches and popular ad, consent, popup and membership plugins. 
 | `publisherId`           | `string`         | -            | From your dashboard. `zapub_` followed by 24 alphanumerics. |
 | `hostnames`             | `string\|array`  | -            | Every host you serve. An apex covers its `www`. Ports, schemes and paths are stripped. |
 | `publicKey`             | `string`         | platform key | Override for staging and tests. Leave alone in production.  |
-| `clockToleranceSeconds` | `int`            | `60`         | Slack on expiry, for servers whose clocks drift.            |
+| `clockToleranceSeconds` | `int`            | `60`         | Allowed clock difference when checking expiry.            |
 | `cache`                 | `bool\|array`    | on           | See [caching](#caching). `false` turns it off.              |
 
 It returns a `Publisher`. Reuse it within the request, or across requests in a long-running application:
@@ -227,7 +227,7 @@ It returns a `Publisher`. Reuse it within the request, or across requests in a l
 ### `$publisher->verify($token, $hostname = null)`
 
 Pass the raw header value: a `string`, an `array` (some stacks return an array for a repeated header; the
-first wins), or `null`. It never throws on bad input. A junk token is a result, not an exception.
+first wins), or `null`. It never throws on bad input. An invalid token returns a rejection result instead of throwing an exception.
 
 - **Pass the actual public request hostname,** including when you serve both an apex and `www`.
 - **If you omit it,** the single configured hostname is used. With several configured hostnames, omitting it throws.
@@ -381,7 +381,7 @@ key. Standard credentials expire at midnight UTC two days after issue, about 24â
 extension checks its pool hourly, and refreshes when credentials run low or near expiry. Demo and
 publisher-test access use separately issued tokens, restricted to one hostname.
 
-**2. The extension binds one to your hostname.** The first time it meets `example.com`, it takes an unused
+**2. The extension binds one to your hostname.** On the first visit to `example.com`, it takes an unused
 key pair and signs your hostname with the private half. This happens offline. It reuses that bound token
 for your exact hostname while it stays valid.
 
